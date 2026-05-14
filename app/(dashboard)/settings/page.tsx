@@ -4,6 +4,7 @@ import * as React from "react";
 import { useTheme } from "next-themes";
 import {
   Bell,
+  FlaskConical,
   Monitor,
   Moon,
   Palette,
@@ -34,7 +35,7 @@ import { PATIENTS } from "@/lib/data";
 import { cn, formatDate } from "@/lib/utils";
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, clinicalAccess, setClinicalAccess } = useAuth();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -261,6 +262,41 @@ export default function SettingsPage() {
                   Update password
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FlaskConical className="size-4" />
+                Clinical data access
+              </CardTitle>
+              <CardDescription>
+                Health data — lab results, metabolic scores, tracking, protocols,
+                and coach transcripts — is hidden by default. In production this
+                is controlled by a medical-staff role; enable it here to preview
+                those surfaces.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">
+                  Show clinical surfaces
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Adds the Clinical Labs page and Health tabs on user profiles.
+                </p>
+              </div>
+              <Switch
+                checked={clinicalAccess}
+                onCheckedChange={(v) => {
+                  setClinicalAccess(v);
+                  toast.success(
+                    v
+                      ? "Clinical data access enabled."
+                      : "Clinical data access disabled.",
+                  );
+                }}
+              />
             </CardContent>
           </Card>
           <Card>

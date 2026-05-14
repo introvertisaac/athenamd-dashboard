@@ -1201,19 +1201,49 @@ export function analyticsOverview() {
   const onboardingComplete = PATIENTS_ONLY.filter(
     (p) => p.onboardingComplete,
   ).length;
+  const wau = PATIENTS_ONLY.filter(
+    (p) => Date.now() - +new Date(p.lastActivityAt) < 7 * 86400_000,
+  ).length;
+  const dau = PATIENTS_ONLY.filter(
+    (p) => Date.now() - +new Date(p.lastActivityAt) < 86400_000,
+  ).length;
+  const newThisMonth = PATIENTS_ONLY.filter(
+    (p) => Date.now() - +new Date(p.createdAt) < 30 * 86400_000,
+  ).length;
+  const trialingCount = PATIENTS_ONLY.filter(
+    (p) => p.subscription.status === "TRIALING",
+  ).length;
+  const pastDueCount = PATIENTS_ONLY.filter(
+    (p) => p.subscription.status === "PAST_DUE",
+  ).length;
+  const lockedCount = PATIENTS_ONLY.filter((p) => p.status === "locked").length;
+  const arpu = paying.length > 0 ? mrr / paying.length : 0;
+  const totalActions = PATIENTS_ONLY.reduce(
+    (s, p) => s + getUserEngagement(p.id).totalActions,
+    0,
+  );
   return {
     total,
     active,
+    wau,
+    dau,
     payingCount: paying.length,
     mrr,
     arr: mrr * 12,
+    arpu,
     newThisWeek,
+    newThisMonth,
+    trialingCount,
+    pastDueCount,
+    lockedCount,
     tierBreakdown,
     statusBreakdown,
     avgScore,
     flaggedLabsTotal,
     onboardingComplete,
     onboardingRate: Math.round((onboardingComplete / total) * 100),
+    activationRate: Math.round((onboardingComplete / total) * 100),
+    avgActionsPerUser: Math.round(totalActions / Math.max(1, total)),
     churnRate: 2.4,
   };
 }
@@ -1291,4 +1321,127 @@ export function ageFromDob(dob: string) {
   const d = new Date(dob);
   const diff = Date.now() - d.getTime();
   return Math.floor(diff / (365.25 * 86400_000));
+}
+
+/* ------------------------------------------------------------------ */
+/* Users — business-facing aliases & engagement                       */
+/* ------------------------------------------------------------------ */
+
+/** Business-facing alias — the owner sees "users", not "patients". */
+export const USERS = PATIENTS_ONLY;
+export const getUser = getPatient;
+
+export type EngagementLevel = "high" | "medium" | "low" | "dormant";
+
+export interface UserEngagement {
+  /** Counts of in-app actions over the trailing 30 days. */
+  featureUsage: {
+    foodLogs: number;
+    coachMessages: number;
+    labUploads: number;
+    symptomLogs: number;
+    sleepSyncs: number;
+  };
+  totalActions: number;
+  logins30: number;
+  activeDays30: number;
+  sessions30: number;
+  avgSessionMin: number;
+  lastActive: string | null;
+  level: EngagementLevel;
+}
+
+export function getUserEngagement(userId: string): UserEngagement {
+  const p = getPatient(userId);
+  if (!p) {
+    return {
+      featureUsage: {
+        foodLogs: 0,
+        coachMessages: 0,
+        labUploads: 0,
+        symptomLogs: 0,
+        sleepSyncs: 0,
+      },
+      totalActions: 0,
+      logins30: 0,
+      activeDays30: 0,
+      sessions30: 0,
+      avgSessionMin: 0,
+      lastActive: null,
+      level: "dormant",
+    };
+  }
+
+  const rng = seeded(userId + "engagement");
+  const foodLogs = getFood(userId).length;
+  const coachMessages = getConversations(userId).reduce(
+    (s, c) => s + c.messages.length,
+    0,
+  );
+  const labUploads = getDocuments(userId).length;
+  const symptomLogs = getSymptoms(userId).length;
+  const sleepSyncs = getSleep(userId).length;
+  const totalActions =
+    foodLogs + coachMessages + labUploads + symptomLogs + sleepSyncs;
+
+  const hoursSinceActive = p.lastLoginAt
+    ? (Date.now() - +new Date(p.lastLoginAt)) / 3600_000
+    : 1e6;
+
+  const activeDays30 = p.onboardingComplete
+    ? Math.min(30, 4 + Math.floor(rng() * 24))
+    : Math.floor(rng() * 4);
+  const logins30 = activeDays30 + Math.floor(rng() * activeDays30);
+  const sessions30 = logins30 + Math.floor(rng() * logins30);
+  const avgSessionMin = round(2 + rng() * 9);
+
+  let level: EngagementLevel;
+  if (!p.onboardingComplete || hoursSinceActive > 24 * 14) level = "dormant";
+  else if (activeDays30 >= 18 && hoursSinceActive < 48) level = "high";
+  else if (activeDays30 >= 9) level = "medium";
+  else level = "low";
+
+  return {
+    featureUsage: {
+      foodLogs,
+      coachMessages,
+      labUploads,
+      symptomLogs,
+      sleepSyncs,
+    },
+    totalActions,
+    logins30,
+    activeDays30,
+    sessions30,
+    avgSessionMin,
+    lastActive: p.lastLoginAt,
+    level,
+  };
+}
+
+/** Daily active users across the trailing 14 days. */
+export function usageSeries() {
+  const rng = seeded("usage-series");
+  return Array.from({ length: 14 }, (_, i) => {
+    const base = 7 + Math.floor(rng() * 5);
+    const weekendDip = i % 7 >= 5 ? -2 : 0;
+    return {
+      date: new Date(Date.now() - (13 - i) * 86400_000).toLocaleDateString(
+        "en-US",
+        { month: "short", day: "numeric" },
+      ),
+      activeUsers: Math.max(3, base + weekendDip + Math.floor(rng() * 3)),
+      sessions: Math.max(
+        5,
+        base * 2 + weekendDip + Math.floor(rng() * 8),
+      ),
+    };
+  });
+}
+
+/** Count of users connected to each integration, for adoption charts. */
+export function integrationAdoption() {
+  return INTEGRATIONS.filter((i) => i.connectedPatients > 0)
+    .map((i) => ({ name: i.name, count: i.connectedPatients }))
+    .sort((a, b) => b.count - a.count);
 }

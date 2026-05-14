@@ -62,7 +62,7 @@ export default function OnboardingPage() {
     <div className="space-y-6">
       <PageHeader
         title="Onboarding"
-        description="Survey completion funnel and per-patient onboarding state."
+        description="Activation funnel and per-user onboarding progress."
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -98,9 +98,9 @@ export default function OnboardingPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Onboarding funnel</CardTitle>
+          <CardTitle>Activation funnel</CardTitle>
           <CardDescription>
-            Patients reaching each step of the 7-step survey
+            Users reaching each step of the 7-step onboarding survey
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -117,16 +117,15 @@ export default function OnboardingPage() {
         <CardHeader>
           <CardTitle>Survey responses</CardTitle>
           <CardDescription>
-            Goals, reported symptoms, and integrations selected during onboarding
+            Goals, integrations, and onboarding progress per user
           </CardDescription>
         </CardHeader>
         <CardContent className="px-0 pb-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="pl-5">Patient</TableHead>
+                <TableHead className="pl-5">User</TableHead>
                 <TableHead>Primary goal</TableHead>
-                <TableHead>Symptoms</TableHead>
                 <TableHead>Integrations</TableHead>
                 <TableHead>Lab upload</TableHead>
                 <TableHead>Progress</TableHead>
@@ -140,7 +139,7 @@ export default function OnboardingPage() {
                   <TableRow
                     key={s.patientId}
                     className="cursor-pointer"
-                    onClick={() => router.push(`/patients/${s.patientId}`)}
+                    onClick={() => router.push(`/users/${s.patientId}`)}
                   >
                     <TableCell className="pl-5">
                       <div className="flex items-center gap-2.5">
@@ -154,20 +153,6 @@ export default function OnboardingPage() {
                     </TableCell>
                     <TableCell className="text-sm">
                       {GOAL_LABELS[s.primaryGoal]}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {s.symptoms.slice(0, 2).map((sym) => (
-                          <Badge key={sym} variant="secondary">
-                            {sym}
-                          </Badge>
-                        ))}
-                        {s.symptoms.length > 2 && (
-                          <Badge variant="outline">
-                            +{s.symptoms.length - 2}
-                          </Badge>
-                        )}
-                      </div>
                     </TableCell>
                     <TableCell>
                       {s.integrations.length === 0 ? (

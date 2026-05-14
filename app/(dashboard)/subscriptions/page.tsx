@@ -73,7 +73,7 @@ export default function SubscriptionsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Subscriptions"
-        description="Billing health, revenue, and Stripe subscription state across all patients."
+        description="Billing health, revenue, and Stripe subscription state across all users."
       >
         <Button
           variant="outline"
@@ -152,7 +152,7 @@ export default function SubscriptionsPage() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {t.count} patient{t.count !== 1 ? "s" : ""}
+                  {t.count} user{t.count !== 1 ? "s" : ""}
                 </p>
               </div>
             ))}
@@ -186,7 +186,7 @@ export default function SubscriptionsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="pl-5">Patient</TableHead>
+                <TableHead className="pl-5">User</TableHead>
                 <TableHead>Plan</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>MRR</TableHead>
@@ -200,7 +200,7 @@ export default function SubscriptionsPage() {
                 <TableRow
                   key={p.id}
                   className="cursor-pointer"
-                  onClick={() => router.push(`/patients/${p.id}`)}
+                  onClick={() => router.push(`/users/${p.id}`)}
                 >
                   <TableCell className="pl-5">
                     <div className="flex items-center gap-2.5">

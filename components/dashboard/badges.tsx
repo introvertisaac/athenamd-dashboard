@@ -71,6 +71,21 @@ export function RoleBadge({ role }: { role: "PATIENT" | "ADMIN" }) {
   return role === "ADMIN" ? (
     <Badge variant="accent">Admin</Badge>
   ) : (
-    <Badge variant="outline">Patient</Badge>
+    <Badge variant="outline">User</Badge>
   );
+}
+
+export function EngagementBadge({
+  level,
+}: {
+  level: "high" | "medium" | "low" | "dormant";
+}) {
+  const map = {
+    high: { variant: "success" as const, label: "Highly active" },
+    medium: { variant: "info" as const, label: "Active" },
+    low: { variant: "warning" as const, label: "Low activity" },
+    dormant: { variant: "secondary" as const, label: "Dormant" },
+  };
+  const { variant, label } = map[level];
+  return <Badge variant={variant}>{label}</Badge>;
 }

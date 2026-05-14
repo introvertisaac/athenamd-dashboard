@@ -6,9 +6,9 @@ import Link from "next/link";
 import {
   Bell,
   CreditCard,
-  FlaskConical,
   LogOut,
   Menu,
+  TrendingUp,
   UserCog,
   UserPlus,
 } from "lucide-react";
@@ -43,16 +43,16 @@ const NOTIFICATIONS = [
   {
     icon: CreditCard,
     title: "Payment failed",
-    body: "David Okonkwo's Premium subscription is past due.",
+    body: "David Okonkwo's Premium subscription is past due — $49 MRR at risk.",
     time: 2,
     accent: "text-warning",
   },
   {
-    icon: FlaskConical,
-    title: "7 flagged lab markers",
-    body: "Robert Klein uploaded a panel with out-of-range results.",
+    icon: TrendingUp,
+    title: "MRR milestone",
+    body: "Monthly recurring revenue crossed $300 for the first time.",
     time: 6,
-    accent: "text-destructive",
+    accent: "text-success",
   },
   {
     icon: UserPlus,

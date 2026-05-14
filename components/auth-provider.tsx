@@ -12,11 +12,15 @@ export type AdminUser = {
 type AuthContextValue = {
   user: AdminUser | null;
   isReady: boolean;
+  /** Whether this admin can see clinical/health surfaces. Owner role = false. */
+  clinicalAccess: boolean;
+  setClinicalAccess: (v: boolean) => void;
   login: (email: string) => void;
   logout: () => void;
 };
 
 const STORAGE_KEY = "metaiq.admin.session";
+const CLINICAL_KEY = "metaiq.admin.clinicalAccess";
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
@@ -29,19 +33,21 @@ function deriveUser(email: string): AdminUser {
   return {
     name: name || "Admin User",
     email,
-    role: "Administrator",
+    role: "Owner",
     avatarColor: "#0f766e",
   };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<AdminUser | null>(null);
+  const [clinicalAccess, setClinicalAccessState] = React.useState(false);
   const [isReady, setIsReady] = React.useState(false);
 
   React.useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setUser(JSON.parse(raw));
+      setClinicalAccessState(localStorage.getItem(CLINICAL_KEY) === "true");
     } catch {
       // ignore corrupt session
     }
@@ -59,8 +65,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const setClinicalAccess = React.useCallback((v: boolean) => {
+    localStorage.setItem(CLINICAL_KEY, String(v));
+    setClinicalAccessState(v);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, isReady, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isReady,
+        clinicalAccess,
+        setClinicalAccess,
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

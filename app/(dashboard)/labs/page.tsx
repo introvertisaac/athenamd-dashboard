@@ -96,7 +96,7 @@ export default function LabsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Labs"
-        description="Every lab marker across the patient population, with functional-range flags."
+        description="Every lab marker across the user population, with functional-range flags."
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -117,7 +117,7 @@ export default function LabsPage() {
         />
         <StatCard
           index={3}
-          label="Patients with flags"
+          label="Users with flags"
           value={patientsWithFlags}
           icon={Users}
           accent="info"
@@ -146,7 +146,7 @@ export default function LabsPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search marker or patient…"
+              placeholder="Search marker or user…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="pl-9"
@@ -207,7 +207,7 @@ export default function LabsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="pl-5">Patient</TableHead>
+                  <TableHead className="pl-5">User</TableHead>
                   <TableHead>Marker</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Value</TableHead>
@@ -221,7 +221,7 @@ export default function LabsPage() {
                   <TableRow
                     key={r.id}
                     className="cursor-pointer"
-                    onClick={() => router.push(`/patients/${r.patientId}`)}
+                    onClick={() => router.push(`/users/${r.patientId}`)}
                   >
                     <TableCell className="pl-5">
                       <div className="flex items-center gap-2.5">

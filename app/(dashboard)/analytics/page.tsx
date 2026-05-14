@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Activity,
-  HeartPulse,
-  TrendingUp,
-  UserCheck,
-  Users,
-} from "lucide-react";
+import { Activity, MousePointerClick, UserCheck, Users } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
 import {
@@ -26,8 +20,9 @@ import {
 import {
   analyticsOverview,
   engagementSeries,
-  scoreDistribution,
+  integrationAdoption,
   signupSeries,
+  usageSeries,
 } from "@/lib/data";
 import { currency } from "@/lib/utils";
 
@@ -35,7 +30,8 @@ export default function AnalyticsPage() {
   const stats = analyticsOverview();
   const signups = signupSeries();
   const engagement = engagementSeries();
-  const dist = scoreDistribution();
+  const usage = usageSeries();
+  const adoption = integrationAdoption();
 
   const tierColors: Record<string, string> = {
     FREE: "var(--chart-4)",
@@ -52,39 +48,42 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Analytics"
-        description="Growth, engagement, and population health metrics across MetaboAI."
+        description="Growth, revenue, and platform usage across MetaboAI."
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           index={0}
-          label="Total patients"
+          label="Total users"
           value={stats.total}
           icon={Users}
           delta={12}
         />
         <StatCard
           index={1}
-          label="Active this week"
-          value={stats.active}
+          label="Weekly active users"
+          value={stats.wau}
           icon={UserCheck}
           delta={5}
+          hint={`${stats.dau} active today`}
           accent="success"
         />
         <StatCard
           index={2}
-          label="Onboarding rate"
-          value={`${stats.onboardingRate}%`}
+          label="Activation rate"
+          value={`${stats.activationRate}%`}
           icon={Activity}
           delta={4}
+          hint="completed onboarding"
           accent="info"
         />
         <StatCard
           index={3}
-          label="Avg metabolic score"
-          value={stats.avgScore}
-          icon={HeartPulse}
-          delta={3}
+          label="Avg actions / user"
+          value={stats.avgActionsPerUser}
+          icon={MousePointerClick}
+          delta={9}
+          hint="trailing 30 days"
           accent="primary"
         />
       </div>
@@ -93,7 +92,7 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader>
             <CardTitle>New signups</CardTitle>
-            <CardDescription>Monthly new patient registrations</CardDescription>
+            <CardDescription>Monthly new user registrations</CardDescription>
           </CardHeader>
           <CardContent>
             <SingleBarChart
@@ -107,7 +106,7 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Active users</CardTitle>
-            <CardDescription>Cumulative active patient base</CardDescription>
+            <CardDescription>Cumulative active user base</CardDescription>
           </CardHeader>
           <CardContent>
             <TrendAreaChart
@@ -124,7 +123,7 @@ export default function AnalyticsPage() {
         <CardHeader>
           <CardTitle>Feature engagement</CardTitle>
           <CardDescription>
-            Daily logging activity across core features this week
+            Daily in-app actions across core features this week
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -158,11 +157,31 @@ export default function AnalyticsPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Daily active users</CardTitle>
+          <CardDescription>
+            Active users and sessions over the last 14 days
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <MultiLineChart
+            data={usage}
+            xKey="date"
+            height={280}
+            series={[
+              { key: "activeUsers", color: "var(--chart-1)" },
+              { key: "sessions", color: "var(--chart-4)" },
+            ]}
+          />
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Plan mix</CardTitle>
-            <CardDescription>Patients by tier</CardDescription>
+            <CardDescription>Users by tier</CardDescription>
           </CardHeader>
           <CardContent>
             <DonutChart data={donutData} />
@@ -187,15 +206,15 @@ export default function AnalyticsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Score distribution</CardTitle>
-            <CardDescription>Metabolic scores by band</CardDescription>
+            <CardTitle>Integration adoption</CardTitle>
+            <CardDescription>Connected users per integration</CardDescription>
           </CardHeader>
           <CardContent>
             <SingleBarChart
-              data={dist}
-              xKey="range"
+              data={adoption}
+              xKey="name"
               dataKey="count"
-              colorKey="color"
+              color="var(--chart-2)"
             />
           </CardContent>
         </Card>
@@ -212,12 +231,20 @@ export default function AnalyticsPage() {
               height={220}
               series={[{ key: "mrr", color: "var(--success)" }]}
             />
-            <p className="mt-3 text-center text-sm text-muted-foreground">
-              Current MRR:{" "}
-              <span className="font-semibold text-foreground">
-                {currency(stats.mrr)}
+            <div className="mt-3 flex items-center justify-center gap-4 text-sm">
+              <span className="text-muted-foreground">
+                MRR{" "}
+                <span className="font-semibold text-foreground">
+                  {currency(stats.mrr)}
+                </span>
               </span>
-            </p>
+              <span className="text-muted-foreground">
+                ARPU{" "}
+                <span className="font-semibold text-foreground">
+                  {currency(stats.arpu)}
+                </span>
+              </span>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -152,7 +152,7 @@ export default function AuditLogsPage() {
               <SelectContent>
                 <SelectItem value="all">All roles</SelectItem>
                 <SelectItem value="ADMIN">Admin</SelectItem>
-                <SelectItem value="PATIENT">Patient</SelectItem>
+                <SelectItem value="PATIENT">User</SelectItem>
               </SelectContent>
             </Select>
             {hasFilters && (

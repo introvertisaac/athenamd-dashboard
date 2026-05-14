@@ -3,27 +3,25 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  Activity,
   ArrowUpRight,
   CreditCard,
-  FlaskConical,
-  HeartPulse,
   TriangleAlert,
   UserPlus,
   Users,
+  Zap,
 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { ScoreRing } from "@/components/dashboard/score-ring";
 import { PatientAvatar } from "@/components/dashboard/patient-avatar";
 import {
   AccountStatusBadge,
+  EngagementBadge,
   SubStatusBadge,
   TierBadge,
 } from "@/components/dashboard/badges";
 import {
   DonutChart,
-  SingleBarChart,
+  MultiLineChart,
   TrendAreaChart,
 } from "@/components/dashboard/charts";
 import {
@@ -44,16 +42,17 @@ import {
 } from "@/components/ui/table";
 import {
   analyticsOverview,
-  PATIENTS_ONLY,
-  scoreDistribution,
+  getUserEngagement,
   signupSeries,
+  usageSeries,
+  USERS,
 } from "@/lib/data";
 import { compactNumber, currency, relativeTime } from "@/lib/utils";
 
 export default function OverviewPage() {
   const stats = analyticsOverview();
   const series = signupSeries();
-  const dist = scoreDistribution();
+  const usage = usageSeries();
 
   const tierColors: Record<string, string> = {
     FREE: "var(--chart-4)",
@@ -66,23 +65,23 @@ export default function OverviewPage() {
     color: tierColors[t.tier],
   }));
 
-  const recentPatients = [...PATIENTS_ONLY]
+  const recentUsers = [...USERS]
     .sort((a, b) => +new Date(b.lastActivityAt) - +new Date(a.lastActivityAt))
     .slice(0, 6);
 
-  const needsAttention = PATIENTS_ONLY.filter(
-    (p) =>
-      p.status === "locked" ||
-      p.subscription.status === "PAST_DUE" ||
-      p.flaggedLabsCount >= 5 ||
-      !p.onboardingComplete,
+  const needsAttention = USERS.filter(
+    (u) =>
+      u.status === "locked" ||
+      u.subscription.status === "PAST_DUE" ||
+      u.subscription.cancelAtPeriodEnd ||
+      !u.onboardingComplete,
   ).slice(0, 5);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Overview"
-        description="Population health, growth, and operational signals at a glance."
+        description="Revenue, growth, and platform usage at a glance."
       >
         <Button variant="outline" asChild>
           <Link href="/analytics">
@@ -91,9 +90,9 @@ export default function OverviewPage() {
           </Link>
         </Button>
         <Button asChild>
-          <Link href="/patients">
+          <Link href="/users">
             <Users className="size-4" />
-            All patients
+            All users
           </Link>
         </Button>
       </PageHeader>
@@ -102,37 +101,38 @@ export default function OverviewPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           index={0}
-          label="Total patients"
-          value={stats.total}
-          icon={Users}
-          delta={12}
-          hint="vs last month"
-        />
-        <StatCard
-          index={1}
           label="Monthly recurring revenue"
           value={currency(stats.mrr)}
           icon={CreditCard}
           delta={8}
-          hint={`${stats.payingCount} paying`}
+          hint={`${currency(stats.arr)} ARR`}
           accent="success"
         />
         <StatCard
+          index={1}
+          label="Total users"
+          value={stats.total}
+          icon={Users}
+          delta={12}
+          hint={`${stats.payingCount} paying`}
+        />
+        <StatCard
           index={2}
-          label="Avg metabolic score"
-          value={stats.avgScore}
-          icon={HeartPulse}
-          delta={3}
-          hint="population mean"
+          label="Weekly active users"
+          value={stats.wau}
+          icon={Zap}
+          delta={5}
+          hint={`${stats.dau} active today`}
           accent="info"
         />
         <StatCard
           index={3}
-          label="Flagged lab markers"
-          value={stats.flaggedLabsTotal}
-          icon={TriangleAlert}
-          hint="needs clinical review"
-          accent="warning"
+          label="New signups this week"
+          value={stats.newThisWeek}
+          icon={UserPlus}
+          delta={18}
+          hint={`${stats.newThisMonth} this month`}
+          accent="primary"
         />
       </div>
 
@@ -170,7 +170,7 @@ export default function OverviewPage() {
           <Card>
             <CardHeader>
               <CardTitle>Plan mix</CardTitle>
-              <CardDescription>Patients by subscription tier</CardDescription>
+              <CardDescription>Users by subscription tier</CardDescription>
             </CardHeader>
             <CardContent>
               <DonutChart data={donutData} />
@@ -198,57 +198,56 @@ export default function OverviewPage() {
         </motion.div>
       </div>
 
-      {/* Score distribution + needs attention */}
+      {/* Usage + needs attention */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Metabolic score distribution</CardTitle>
-            <CardDescription>Across onboarded patients</CardDescription>
+            <CardTitle>Daily active users</CardTitle>
+            <CardDescription>
+              Active users and sessions over the last 14 days
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <SingleBarChart
-              data={dist}
-              xKey="range"
-              dataKey="count"
-              colorKey="color"
+            <MultiLineChart
+              data={usage}
+              xKey="date"
+              series={[
+                { key: "activeUsers", color: "var(--chart-1)" },
+                { key: "sessions", color: "var(--chart-4)" },
+              ]}
             />
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader className="flex-row items-center justify-between">
             <div className="space-y-1">
               <CardTitle>Needs attention</CardTitle>
-              <CardDescription>
-                Locked accounts, billing issues, and clinical flags
-              </CardDescription>
+              <CardDescription>Billing & account issues</CardDescription>
             </div>
             <TriangleAlert className="size-4 text-warning" />
           </CardHeader>
           <CardContent className="space-y-2">
-            {needsAttention.map((p) => {
-              const reason = !p.onboardingComplete
+            {needsAttention.map((u) => {
+              const reason = !u.onboardingComplete
                 ? "Onboarding incomplete"
-                : p.status === "locked"
+                : u.status === "locked"
                   ? "Account locked"
-                  : p.subscription.status === "PAST_DUE"
+                  : u.subscription.status === "PAST_DUE"
                     ? "Payment past due"
-                    : `${p.flaggedLabsCount} flagged lab markers`;
+                    : "Subscription cancelling";
               return (
                 <Link
-                  key={p.id}
-                  href={`/patients/${p.id}`}
+                  key={u.id}
+                  href={`/users/${u.id}`}
                   className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
                 >
-                  <PatientAvatar name={p.name} color={p.avatarColor} />
+                  <PatientAvatar name={u.name} color={u.avatarColor} />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{p.name}</p>
+                    <p className="truncate text-sm font-semibold">{u.name}</p>
                     <p className="truncate text-xs text-muted-foreground">
                       {reason}
                     </p>
-                  </div>
-                  <div className="ml-auto hidden sm:block">
-                    <AccountStatusBadge status={p.status} />
                   </div>
                 </Link>
               );
@@ -261,13 +260,11 @@ export default function OverviewPage() {
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <div className="space-y-1">
-            <CardTitle>Recently active patients</CardTitle>
-            <CardDescription>
-              Latest sign-ins and app activity
-            </CardDescription>
+            <CardTitle>Recently active users</CardTitle>
+            <CardDescription>Latest sign-ins and app activity</CardDescription>
           </div>
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/patients">
+            <Link href="/users">
               View all
               <ArrowUpRight className="size-4" />
             </Link>
@@ -277,48 +274,48 @@ export default function OverviewPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="pl-5">Patient</TableHead>
+                <TableHead className="pl-5">User</TableHead>
                 <TableHead>Plan</TableHead>
                 <TableHead>Billing</TableHead>
-                <TableHead>Score</TableHead>
+                <TableHead>Account</TableHead>
+                <TableHead>Engagement</TableHead>
                 <TableHead className="pr-5 text-right">Last active</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recentPatients.map((p) => (
+              {recentUsers.map((u) => (
                 <TableRow
-                  key={p.id}
+                  key={u.id}
                   className="cursor-pointer"
                   onClick={() => {
-                    window.location.href = `/patients/${p.id}`;
+                    window.location.href = `/users/${u.id}`;
                   }}
                 >
                   <TableCell className="pl-5">
                     <div className="flex items-center gap-3">
-                      <PatientAvatar name={p.name} color={p.avatarColor} />
+                      <PatientAvatar name={u.name} color={u.avatarColor} />
                       <div>
-                        <p className="text-sm font-semibold">{p.name}</p>
+                        <p className="text-sm font-semibold">{u.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {p.email}
+                          {u.email}
                         </p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <TierBadge tier={p.subscription.tier} />
+                    <TierBadge tier={u.subscription.tier} />
                   </TableCell>
                   <TableCell>
-                    <SubStatusBadge status={p.subscription.status} />
+                    <SubStatusBadge status={u.subscription.status} />
                   </TableCell>
                   <TableCell>
-                    {p.onboardingComplete ? (
-                      <ScoreRing score={p.metabolicScore} size={36} stroke={4} />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
+                    <AccountStatusBadge status={u.status} />
+                  </TableCell>
+                  <TableCell>
+                    <EngagementBadge level={getUserEngagement(u.id).level} />
                   </TableCell>
                   <TableCell className="pr-5 text-right text-sm text-muted-foreground">
-                    {relativeTime(p.lastActivityAt)}
+                    {relativeTime(u.lastActivityAt)}
                   </TableCell>
                 </TableRow>
               ))}

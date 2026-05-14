@@ -42,14 +42,14 @@ export function GlobalSearch() {
         className="flex h-9 w-full items-center gap-2 rounded-lg border bg-card px-3 text-sm text-muted-foreground shadow-sm transition-colors hover:bg-accent/40 sm:w-72"
       >
         <Search className="size-4" />
-        <span className="flex-1 text-left">Search patients, pages…</span>
+        <span className="flex-1 text-left">Search users, pages…</span>
         <kbd className="hidden items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-[0.65rem] font-medium text-muted-foreground sm:inline-flex">
           ⌘K
         </kbd>
       </button>
 
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Search patients, pages…" />
+        <CommandInput placeholder="Search users, pages…" />
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
           <CommandGroup heading="Pages">
@@ -67,12 +67,12 @@ export function GlobalSearch() {
               );
             })}
           </CommandGroup>
-          <CommandGroup heading="Patients">
+          <CommandGroup heading="Users">
             {PATIENTS.filter((p) => p.role === "PATIENT").map((p) => (
               <CommandItem
                 key={p.id}
-                value={`patient ${p.name} ${p.email}`}
-                onSelect={() => go(`/patients/${p.id}`)}
+                value={`user ${p.name} ${p.email}`}
+                onSelect={() => go(`/users/${p.id}`)}
               >
                 <span
                   className="flex size-5 items-center justify-center rounded-full text-[0.6rem] font-semibold"
