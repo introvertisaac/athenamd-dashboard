@@ -12,6 +12,7 @@ import type {
   OnboardingSurvey,
   Patient,
   Protocol,
+  ProtocolItem,
   SleepData,
   SymptomLog,
 } from "./types";
@@ -922,12 +923,14 @@ export function getProtocol(patientId: string): Protocol | null {
       { title: "Reduce refined carbohydrates", rationale: "Triglycerides and fasting insulin suggest carbohydrate sensitivity." },
       { title: "Add fermented foods daily", rationale: "Supports microbiome diversity and reduces reported bloating." },
     ].filter((_, i) => i < 2 + Math.floor(rng() * 2)),
-    lifestyle: [
-      { title: "10-minute post-meal walks", rationale: "Improves glucose disposal after the largest meals.", priority: "high" },
-      { title: "Consistent sleep/wake window", rationale: "HRV trend indicates incomplete overnight recovery.", priority: "high" },
-      { title: "Daily breathwork or sauna", rationale: "Down-regulates sympathetic tone; supports cortisol rhythm.", priority: "medium" },
-      { title: "Strength training 3x/week", rationale: "Increases insulin-independent glucose uptake.", priority: "medium" },
-    ].filter((_, i) => i < 2 + Math.floor(rng() * 3)),
+    lifestyle: (
+      [
+        { title: "10-minute post-meal walks", rationale: "Improves glucose disposal after the largest meals.", priority: "high" },
+        { title: "Consistent sleep/wake window", rationale: "HRV trend indicates incomplete overnight recovery.", priority: "high" },
+        { title: "Daily breathwork or sauna", rationale: "Down-regulates sympathetic tone; supports cortisol rhythm.", priority: "medium" },
+        { title: "Strength training 3x/week", rationale: "Increases insulin-independent glucose uptake.", priority: "medium" },
+      ] satisfies ProtocolItem[]
+    ).filter((_, i) => i < 2 + Math.floor(rng() * 3)),
     lastUpdated: daysAgo(Math.floor(rng() * 20)),
   };
 }
