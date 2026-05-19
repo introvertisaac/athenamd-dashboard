@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowLeft, Loader2, MailCheck, Send } from "lucide-react";
 import { toast } from "sonner";
+import { authApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,18 +15,22 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = React.useState(false);
   const [sent, setSent] = React.useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim()) {
       toast.error("Enter the email associated with your account.");
       return;
     }
     setLoading(true);
-    setTimeout(() => {
+    try {
+      await authApi.forgotPassword(email.trim().toLowerCase());
+    } catch {
+      // Swallow errors — never reveal whether an account exists.
+    } finally {
       setLoading(false);
       setSent(true);
       toast.success("If that account exists, a reset link is on its way.");
-    }, 800);
+    }
   }
 
   return (
@@ -46,13 +51,6 @@ export default function ForgotPasswordPage() {
               <span className="font-medium text-foreground">{email}</span>. The
               link expires in 1 hour.
             </p>
-          </div>
-          <div className="rounded-lg border border-dashed bg-muted/50 p-3 text-center text-xs text-muted-foreground">
-            Demo environment —{" "}
-            <Link href="/reset-password" className="font-medium text-primary hover:underline">
-              open the reset screen
-            </Link>{" "}
-            directly.
           </div>
           <Button asChild variant="outline" className="w-full">
             <Link href="/login">
@@ -79,7 +77,7 @@ export default function ForgotPasswordPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="you@metaboai.com"
+                placeholder="you@example.com"
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

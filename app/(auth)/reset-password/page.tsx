@@ -3,9 +3,19 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Check, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  Eye,
+  EyeOff,
+  Loader2,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "sonner";
+import { authApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,8 +39,11 @@ const STRENGTH_COLOR = [
   "bg-success",
 ];
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token") ?? "";
+
   const [password, setPassword] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
   const [show, setShow] = React.useState(false);
@@ -39,10 +52,33 @@ export default function ResetPasswordPage() {
   const score = strength(password);
   const mismatch = confirm.length > 0 && confirm !== password;
 
-  function handleSubmit(e: React.FormEvent) {
+  // No token means the link is invalid or was navigated to directly.
+  if (!token) {
+    return (
+      <div className="space-y-6">
+        <div className="flex size-12 items-center justify-center rounded-xl bg-destructive/12 text-destructive">
+          <AlertTriangle className="size-6" />
+        </div>
+        <div className="space-y-1.5">
+          <h2 className="text-2xl font-bold tracking-tight">Invalid link</h2>
+          <p className="text-sm text-muted-foreground">
+            This password reset link is missing a token. Please request a new
+            one.
+          </p>
+        </div>
+        <Button asChild variant="outline" className="w-full">
+          <Link href="/forgot-password">Request new link</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (score < 2) {
-      toast.error("Choose a stronger password.");
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+      toast.error(
+        "Password must be at least 8 characters with an uppercase letter and a number."
+      );
       return;
     }
     if (password !== confirm) {
@@ -50,10 +86,17 @@ export default function ResetPasswordPage() {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
+    try {
+      await authApi.resetPassword(token, password);
       toast.success("Password updated. Please sign in.");
       router.replace("/login");
-    }, 800);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Reset failed. Try requesting a new link."
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -68,7 +111,8 @@ export default function ResetPasswordPage() {
         </div>
         <h2 className="text-2xl font-bold tracking-tight">Set a new password</h2>
         <p className="text-sm text-muted-foreground">
-          Your new password must be different from previously used passwords.
+          Your new password must be at least 8 characters and include an
+          uppercase letter and a number.
         </p>
       </div>
 
@@ -102,7 +146,7 @@ export default function ResetPasswordPage() {
                     key={i}
                     className={cn(
                       "h-1 flex-1 rounded-full transition-colors",
-                      i < score ? STRENGTH_COLOR[score] : "bg-muted",
+                      i < score ? STRENGTH_COLOR[score] : "bg-muted"
                     )}
                   />
                 ))}
@@ -151,5 +195,19 @@ export default function ResetPasswordPage() {
         </Link>
       </Button>
     </motion.div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="flex justify-center py-12">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <ResetPasswordContent />
+    </React.Suspense>
   );
 }
