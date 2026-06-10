@@ -77,7 +77,7 @@ export default function IntegrationsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Integrations"
-        description="Third-party data sources patients can connect to MetaboAI."
+        description="Third-party data sources patients can connect to AthenaMD."
       />
 
       <div className="grid gap-4 sm:grid-cols-3">

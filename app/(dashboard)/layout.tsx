@@ -24,7 +24,7 @@ export default function DashboardLayout({
   if (!isReady || !user) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-6">
-        <Wordmark size="lg" />
+        <Wordmark size="lg" showImage />
         <Loader2 className="size-5 animate-spin text-muted-foreground" />
       </div>
     );

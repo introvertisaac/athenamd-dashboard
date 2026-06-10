@@ -632,7 +632,7 @@ export const PATIENTS: Patient[] = [
   {
     id: "usr_admin01",
     name: "Dr. Alex Rivera",
-    email: "alex.rivera@metaboai.com",
+    email: "alex.rivera@athenamd.com",
     role: "ADMIN",
     status: "active",
     emailVerified: true,
@@ -1062,15 +1062,15 @@ export const AUDIT_LOGS: AuditLogEntry[] = (() => {
     return {
       id: `audit_${1000 + i}`,
       createdAt: hoursAgo(i * 3 + rng() * 3),
-      actorEmail: isAdmin ? "alex.rivera@metaboai.com" : actor.email,
+      actorEmail: isAdmin ? "alex.rivera@athenamd.com" : actor.email,
       actorRole: isAdmin ? "ADMIN" : "PATIENT",
       action: a.action,
       resourceType: a.resourceType,
       resourceId: rng() < 0.8 ? actor.id : null,
       ipAddress: `${10 + Math.floor(rng() * 240)}.${Math.floor(rng() * 255)}.${Math.floor(rng() * 255)}.${Math.floor(rng() * 255)}`,
       userAgent: pick(rng, [
-        "MetaboAI/1.1.0 (iPhone; iOS 18.2)",
-        "MetaboAI/1.1.0 (Android 15)",
+        "AthenaMD/1.1.0 (iPhone; iOS 18.2)",
+        "AthenaMD/1.1.0 (Android 15)",
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       ]),

@@ -8,13 +8,13 @@ import { Toaster } from "@/components/ui/sonner";
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "MetaboAI Admin",
+  title: "AthenaMD Admin",
   description:
-    "Admin dashboard for managing MetaboAI patients, labs, and subscriptions.",
+    "Admin dashboard for managing AthenaMD patients, labs, and subscriptions.",
 };
 
 export default function RootLayout({

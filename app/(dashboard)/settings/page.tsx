@@ -370,7 +370,7 @@ export default function SettingsPage() {
               <div className="space-y-1">
                 <CardTitle>Admin team</CardTitle>
                 <CardDescription>
-                  Staff with access to the MetaboAI admin dashboard.
+                  Staff with access to the AthenaMD admin dashboard.
                 </CardDescription>
               </div>
               <Button

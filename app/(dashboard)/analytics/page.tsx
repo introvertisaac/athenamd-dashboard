@@ -195,7 +195,7 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Analytics"
-        description="Growth, revenue, and platform usage across MetaboAI."
+        description="Growth, revenue, and platform usage across AthenaMD."
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

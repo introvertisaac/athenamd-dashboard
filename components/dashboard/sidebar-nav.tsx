@@ -107,7 +107,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
             Check the operations runbook or reach the platform team.
           </p>
           <a
-            href="mailto:platform@metaboai.com"
+            href="mailto:platform@athenamd.com"
             className="mt-2 inline-block text-xs font-semibold text-sidebar-primary hover:underline"
           >
             Contact platform team →

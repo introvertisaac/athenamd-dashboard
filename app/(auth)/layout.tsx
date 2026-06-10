@@ -14,7 +14,7 @@ export default function AuthLayout({
           className="pointer-events-none absolute inset-0 opacity-30"
           style={{
             background:
-              "radial-gradient(600px circle at 20% 10%, #2dd4bf55, transparent), radial-gradient(500px circle at 80% 90%, #14b8a655, transparent)",
+              "radial-gradient(600px circle at 20% 10%, #47C9B855, transparent), radial-gradient(500px circle at 80% 90%, #3DBCAC55, transparent)",
           }}
         />
         <div className="relative">
@@ -23,7 +23,7 @@ export default function AuthLayout({
 
         <div className="relative space-y-8">
           <h1 className="max-w-md text-3xl font-bold leading-tight tracking-tight">
-            The clinical command center behind every MetaboAI patient.
+            The clinical command center behind every AthenaMD patient.
           </h1>
           <ul className="space-y-4 text-sm text-primary-foreground/90">
             {[
@@ -43,7 +43,7 @@ export default function AuthLayout({
         </div>
 
         <p className="relative text-xs text-primary-foreground/70">
-          © {new Date().getFullYear()} MetaboAI, Inc. · For authorized clinical staff only.
+          © {new Date().getFullYear()} AthenaMD, Inc. · For authorized clinical staff only.
         </p>
       </div>
 

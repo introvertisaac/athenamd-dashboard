@@ -4,8 +4,9 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
-  MetaboAI Admin — design tokens.
-  Palette mirrors the mobile app: deep teal brand (#0F766E),
+  AthenaMD Admin — design tokens.
+  Palette mirrors the mobile app (lib/core/theme/app_colors.dart):
+  teal brand (#2E9B8A), navy wordmark (#17305C),
   slate neutrals, semantic success/warning/danger/info.
 */
 :root {
@@ -20,8 +21,8 @@
   --popover: #ffffff;
   --popover-foreground: #0f172a;
 
-  --primary: #0f766e;
-  --primary-foreground: #f0fdfa;
+  --primary: #2e9b8a;
+  --primary-foreground: #ffffff;
 
   --secondary: #f1f5f9;
   --secondary-foreground: #0f172a;
@@ -29,8 +30,10 @@
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
 
-  --accent: #ccfbf1;
-  --accent-foreground: #0f766e;
+  --accent: #ccf0ec;
+  --accent-foreground: #2e9b8a;
+
+  --brand: #17305c;
 
   --destructive: #dc2626;
   --destructive-foreground: #fef2f2;
@@ -46,20 +49,20 @@
 
   --border: #e2e8f0;
   --input: #e2e8f0;
-  --ring: #14b8a6;
+  --ring: #2e9b8a;
 
   --sidebar: #ffffff;
   --sidebar-foreground: #334155;
-  --sidebar-primary: #0f766e;
-  --sidebar-primary-foreground: #f0fdfa;
-  --sidebar-accent: #ccfbf1;
-  --sidebar-accent-foreground: #0f766e;
+  --sidebar-primary: #2e9b8a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ccf0ec;
+  --sidebar-accent-foreground: #2e9b8a;
   --sidebar-border: #e2e8f0;
-  --sidebar-ring: #14b8a6;
+  --sidebar-ring: #2e9b8a;
 
-  --chart-1: #0f766e;
-  --chart-2: #14b8a6;
-  --chart-3: #2dd4bf;
+  --chart-1: #2e9b8a;
+  --chart-2: #3dbcac;
+  --chart-3: #47c9b8;
   --chart-4: #d97706;
   --chart-5: #2563eb;
 }
@@ -74,8 +77,8 @@
   --popover: #1e293b;
   --popover-foreground: #f8fafc;
 
-  --primary: #2dd4bf;
-  --primary-foreground: #042f2e;
+  --primary: #2e9b8a;
+  --primary-foreground: #ffffff;
 
   --secondary: #334155;
   --secondary-foreground: #f8fafc;
@@ -83,8 +86,10 @@
   --muted: #1e293b;
   --muted-foreground: #94a3b8;
 
-  --accent: #134e4a;
-  --accent-foreground: #5eead4;
+  --accent: #0d5e53;
+  --accent-foreground: #ccf0ec;
+
+  --brand: #f8fafc;
 
   --destructive: #f87171;
   --destructive-foreground: #450a0a;
@@ -100,20 +105,20 @@
 
   --border: #334155;
   --input: #334155;
-  --ring: #2dd4bf;
+  --ring: #2e9b8a;
 
   --sidebar: #1e293b;
   --sidebar-foreground: #cbd5e1;
-  --sidebar-primary: #2dd4bf;
-  --sidebar-primary-foreground: #042f2e;
-  --sidebar-accent: #134e4a;
-  --sidebar-accent-foreground: #5eead4;
+  --sidebar-primary: #2e9b8a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #0d5e53;
+  --sidebar-accent-foreground: #ccf0ec;
   --sidebar-border: #334155;
-  --sidebar-ring: #2dd4bf;
+  --sidebar-ring: #2e9b8a;
 
-  --chart-1: #2dd4bf;
-  --chart-2: #14b8a6;
-  --chart-3: #0f766e;
+  --chart-1: #47c9b8;
+  --chart-2: #3dbcac;
+  --chart-3: #2e9b8a;
   --chart-4: #fbbf24;
   --chart-5: #60a5fa;
 }
@@ -133,6 +138,7 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-brand: var(--brand);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
