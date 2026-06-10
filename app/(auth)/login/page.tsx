@@ -20,23 +20,51 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [remember, setRemember] = React.useState(true);
   const [loading, setLoading] = React.useState(false);
+  const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (isReady && user) router.replace("/overview");
   }, [isReady, user, router]);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim() || !password) {
-      toast.error("Enter your email and password to continue.");
+      setErrorMsg("Enter your email and password to continue.");
       return;
     }
+    setErrorMsg(null);
     setLoading(true);
-    setTimeout(() => {
-      login(email);
-      toast.success("Welcome back to MetaboAI Admin.");
+    try {
+      await login(email, password);
+      toast.success("Welcome back to AthenaMD Admin.");
       router.replace("/overview");
-    }, 700);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Sign in failed";
+
+      if (message.includes("Admin access required")) {
+        setErrorMsg("Admin access required. This account does not have admin privileges.");
+      } else if (
+        message.toLowerCase().includes("locked") ||
+        (err instanceof Error && "status" in err && (err as { status?: number }).status === 423)
+      ) {
+        setErrorMsg("Account locked — too many failed attempts. Try again in 15 minutes.");
+      } else if (
+        (err instanceof Error && "status" in err && (err as { status?: number }).status === 429)
+      ) {
+        setErrorMsg("Too many attempts — please slow down and try again shortly.");
+      } else if (
+        message.toLowerCase().includes("invalid") ||
+        message.toLowerCase().includes("credentials") ||
+        (err instanceof Error && "status" in err && (err as { status?: number }).status === 401)
+      ) {
+        setErrorMsg("Invalid email or password.");
+      } else {
+        setErrorMsg(message);
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -58,7 +86,7 @@ export default function LoginPage() {
           <Input
             id="email"
             type="email"
-            placeholder="you@metaboai.com"
+            placeholder="you@athenamd.com"
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -111,6 +139,12 @@ export default function LoginPage() {
           </Label>
         </div>
 
+        {errorMsg && (
+          <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {errorMsg}
+          </p>
+        )}
+
         <Button type="submit" className="w-full" size="lg" disabled={loading}>
           {loading ? (
             <Loader2 className="size-4 animate-spin" />
@@ -121,14 +155,10 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <div className="mt-6 rounded-lg border border-dashed bg-muted/50 p-3 text-center text-xs text-muted-foreground">
-        Demo environment — any email and password will sign you in.
-      </div>
-
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Need a staff account?{" "}
         <a
-          href="mailto:it@metaboai.com"
+          href="mailto:it@athenamd.com"
           className="font-medium text-primary hover:underline"
         >
           Contact IT

@@ -1,6 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { api, decodeJwt } from "@/lib/api";
+import { clearTokens, setTokens } from "@/lib/auth";
 
 export type AdminUser = {
   name: string;
@@ -12,61 +16,60 @@ export type AdminUser = {
 type AuthContextValue = {
   user: AdminUser | null;
   isReady: boolean;
-  /** Whether this admin can see clinical/health surfaces. Owner role = false. */
   clinicalAccess: boolean;
   setClinicalAccess: (v: boolean) => void;
-  login: (email: string) => void;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
 };
-
-const STORAGE_KEY = "metaiq.admin.session";
-const CLINICAL_KEY = "metaiq.admin.clinicalAccess";
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
-function deriveUser(email: string): AdminUser {
+function deriveUser(email: string, role: string): AdminUser {
   const handle = email.split("@")[0] || "admin";
   const name = handle
     .split(/[._-]/)
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .map((p: string) => p.charAt(0).toUpperCase() + p.slice(1))
     .join(" ");
   return {
     name: name || "Admin User",
     email,
-    role: "Owner",
+    role,
     avatarColor: "#0f766e",
   };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = React.useState<AdminUser | null>(null);
   const [clinicalAccess, setClinicalAccessState] = React.useState(false);
-  const [isReady, setIsReady] = React.useState(false);
+  // Tokens are memory-only — no storage to hydrate from, so isReady is true immediately
+  const [isReady] = React.useState(true);
 
-  React.useEffect(() => {
+  const login = React.useCallback(
+    async (email: string, password: string): Promise<void> => {
+      const res = await api.auth.login(email.trim().toLowerCase(), password);
+      const payload = decodeJwt(res.accessToken);
+      if (payload.role !== "ADMIN") {
+        throw new Error("Admin access required");
+      }
+      setTokens({ accessToken: res.accessToken, refreshToken: res.refreshToken });
+      setUser(deriveUser(email.trim().toLowerCase(), payload.role));
+    },
+    []
+  );
+
+  const logout = React.useCallback(async (): Promise<void> => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setUser(JSON.parse(raw));
-      setClinicalAccessState(localStorage.getItem(CLINICAL_KEY) === "true");
+      await api.auth.logout();
     } catch {
-      // ignore corrupt session
+      // best-effort — clear tokens regardless
     }
-    setIsReady(true);
-  }, []);
-
-  const login = React.useCallback((email: string) => {
-    const next = deriveUser(email.trim().toLowerCase());
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    setUser(next);
-  }, []);
-
-  const logout = React.useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
+    clearTokens();
     setUser(null);
-  }, []);
+    router.replace("/login");
+  }, [router]);
 
   const setClinicalAccess = React.useCallback((v: boolean) => {
-    localStorage.setItem(CLINICAL_KEY, String(v));
     setClinicalAccessState(v);
   }, []);
 
