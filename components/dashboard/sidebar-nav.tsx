@@ -1,16 +1,31 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LifeBuoy, Lock } from "lucide-react";
 import { Wordmark } from "@/components/wordmark";
 import { useAuth } from "@/components/auth-provider";
 import { NAV_GROUPS, NAV_ITEMS } from "@/lib/nav";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { clinicalAccess } = useAuth();
+  const [emergencyCount, setEmergencyCount] = React.useState(0);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const poll = () => {
+      api.admin.emergency.list({ limit: 1, status: "DETECTED" })
+        .then((r) => { if (!cancelled) setEmergencyCount(r.total); })
+        .catch(() => { /* non-critical — badge stays at last known value */ });
+    };
+    poll();
+    const id = setInterval(poll, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
 
   const visibleItems = NAV_ITEMS.filter(
     (i) => !i.clinical || clinicalAccess,
@@ -64,7 +79,15 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                           : "text-sidebar-foreground/70 group-hover:text-sidebar-accent-foreground",
                       )}
                     />
-                    {item.label}
+                    <span className="flex-1">{item.label}</span>
+                    {(() => {
+                      const badge = item.href === "/emergency" ? emergencyCount : (item.badge ?? 0);
+                      return !!badge && (
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[0.65rem] font-semibold text-destructive-foreground">
+                          {badge > 99 ? "99+" : badge}
+                        </span>
+                      );
+                    })()}
                   </Link>
                 );
               })}

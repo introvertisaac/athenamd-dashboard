@@ -4,9 +4,12 @@ import * as React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
+  AlertTriangle,
   ArrowUpRight,
   Clock,
   CreditCard,
+  ShieldAlert,
+  ShieldCheck,
   TriangleAlert,
   UserPlus,
   Users,
@@ -21,7 +24,7 @@ import {
   SubStatusBadge,
   TierBadge,
 } from "@/components/dashboard/badges";
-import { DonutChart } from "@/components/dashboard/charts";
+import { DonutChart, TrendAreaChart } from "@/components/dashboard/charts";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import {
   Card,
@@ -40,9 +43,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { api, type AnalyticsOverview, type UserListItem } from "@/lib/api";
+import { api, type AnalyticsOverview, type UserListItem, type BillingListItem, type GrowthBucket } from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
 import type { AccountStatus } from "@/lib/types";
-import { compactNumber, relativeTime } from "@/lib/utils";
+import { compactNumber, currency, relativeTime } from "@/lib/utils";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -78,23 +82,40 @@ export default function OverviewPage() {
   const [users, setUsers] = React.useState<UserListItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(false);
+  const [emergencyCount, setEmergencyCount] = React.useState<number | null>(null);
+  const [growthData, setGrowthData] = React.useState<GrowthBucket[] | null>(null);
+  const [mrr, setMrr] = React.useState<number | null>(null);
+  const [pastDueItems, setPastDueItems] = React.useState<BillingListItem[]>([]);
 
   const load = React.useCallback(async () => {
     setLoading(true);
     setError(false);
     try {
-      const [analyticsRes, usersRes] = await Promise.all([
+      const [analyticsRes, usersRes, growthRes, revenueRes] = await Promise.all([
         api.admin.analytics.overview(),
         api.admin.users.list({ page: 1, limit: 20 }),
+        api.admin.analytics.growth("30d"),
+        api.admin.analytics.revenue("30d"),
       ]);
       setAnalytics(analyticsRes);
       setUsers(usersRes.data);
+      setGrowthData(growthRes.data.buckets);
+      setMrr(revenueRes.data.currentMrr);
     } catch {
       setError(true);
       toast.error("Failed to load overview data");
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  React.useEffect(() => {
+    api.admin.emergency.list({ limit: 1, status: "DETECTED" })
+      .then((r) => setEmergencyCount(r.total))
+      .catch(() => { /* non-critical */ });
+    api.admin.billing.list({ status: "PAST_DUE", limit: 5 })
+      .then((r) => setPastDueItems(r.data))
+      .catch(() => { /* non-critical */ });
   }, []);
 
   React.useEffect(() => { void load(); }, [load]);
@@ -119,11 +140,23 @@ export default function OverviewPage() {
     })
     .slice(0, 6);
 
-  const needsAttention = users.filter((u) => {
-    const isLocked = u.lockedUntil && new Date(u.lockedUntil) > new Date();
-    const isPastDue = u.subscription?.status === "PAST_DUE";
-    return isLocked || isPastDue;
-  }).slice(0, 5);
+  // Merge locked users (from top-20 list) with past-due from billing API, deduplicated
+  const needsAttention = React.useMemo(() => {
+    const fromUsers = users.filter((u) => {
+      const isLocked = u.lockedUntil && new Date(u.lockedUntil) > new Date();
+      const isPastDue = u.subscription?.status === "PAST_DUE";
+      return isLocked || isPastDue;
+    });
+    const knownIds = new Set(fromUsers.map((u) => u.id));
+    const fromBilling = pastDueItems
+      .filter((b) => !knownIds.has(b.userId))
+      .map((b): UserListItem => ({
+        id: b.userId, email: b.email, role: b.role,
+        createdAt: b.createdAt, emailVerifiedAt: null, lastLoginAt: null, lockedUntil: null, deletedAt: null,
+        subscription: { tier: b.tier, status: b.status },
+      }));
+    return [...fromUsers, ...fromBilling].slice(0, 5);
+  }, [users, pastDueItems]);
 
   return (
     <div className="space-y-6">
@@ -163,9 +196,9 @@ export default function OverviewPage() {
           <StatCard
             index={0}
             label="Monthly recurring revenue"
-            value="—"
+            value={mrr !== null ? currency(mrr) : "—"}
             icon={CreditCard}
-            hint="Requires Stripe price data"
+            hint={mrr !== null ? "from Stripe subscriptions" : "Loading…"}
             accent="success"
           />
           <StatCard
@@ -177,10 +210,9 @@ export default function OverviewPage() {
           />
           <StatCard
             index={2}
-            label="Weekly active users"
-            value="—"
+            label="Active subscriptions"
+            value={compactNumber(analytics?.activeSubscriptions ?? 0)}
             icon={Zap}
-            hint="Coming in Workstream B"
             accent="info"
           />
           <StatCard
@@ -204,17 +236,22 @@ export default function OverviewPage() {
           <Card>
             <CardHeader>
               <CardTitle>Growth</CardTitle>
-              <CardDescription>
-                Cumulative active users over the last 12 months
-              </CardDescription>
+              <CardDescription>New user registrations over the last 30 days</CardDescription>
             </CardHeader>
             <CardContent>
-              <EmptyState
-                icon={Clock}
-                title="Time-series data coming in Workstream B"
-                description="Growth charts require date-bucketed backend endpoints that are not yet available."
-                className="py-8"
-              />
+              {loading ? (
+                <Skeleton className="h-48 rounded-xl" />
+              ) : !growthData || growthData.length === 0 ? (
+                <EmptyState icon={UserPlus} title="No growth data yet" className="py-8" />
+              ) : (
+                <TrendAreaChart
+                  data={growthData as unknown as Record<string, unknown>[]}
+                  dataKey="count"
+                  xKey="date"
+                  color="var(--chart-1)"
+                  height={200}
+                />
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -282,45 +319,82 @@ export default function OverviewPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <div className="space-y-1">
-              <CardTitle>Needs attention</CardTitle>
-              <CardDescription>Billing & account issues</CardDescription>
-            </div>
-            <TriangleAlert className="size-4 text-warning" />
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {loading ? (
-              [0, 1, 2].map((i) => (
-                <Skeleton key={i} className="h-[60px] rounded-lg" />
-              ))
-            ) : needsAttention.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No issues found.</p>
-            ) : (
-              needsAttention.map((u) => {
-                const isLocked = u.lockedUntil && new Date(u.lockedUntil) > new Date();
-                const reason = isLocked ? "Account locked" : "Payment past due";
-                const name = emailToName(u.email);
-                return (
-                  <Link
-                    key={u.id}
-                    href={`/users/${u.id}`}
-                    className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
-                  >
-                    <PatientAvatar name={name} color={emailToColor(u.email)} />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">{u.email}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {reason}
-                      </p>
-                    </div>
-                  </Link>
-                );
-              })
-            )}
-          </CardContent>
-        </Card>
+        <div className="flex flex-col gap-4">
+          {/* Emergency alert widget */}
+          <Card>
+            <CardHeader className="flex-row items-center justify-between pb-3">
+              <div className="space-y-1">
+                <CardTitle>Emergency alerts</CardTitle>
+                <CardDescription>Unreviewed critical events</CardDescription>
+              </div>
+              <ShieldAlert className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              {emergencyCount === null ? (
+                <Skeleton className="h-10 rounded-lg" />
+              ) : emergencyCount === 0 ? (
+                <div className="flex items-center gap-2 text-sm text-success">
+                  <ShieldCheck className="size-4" />
+                  No active alerts
+                </div>
+              ) : (
+                <Link
+                  href="/emergency"
+                  className="flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 transition-colors hover:bg-destructive/10"
+                >
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="size-4 text-destructive" />
+                    <span className="text-sm font-medium text-destructive">
+                      {emergencyCount} unreviewed alert{emergencyCount !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <Badge variant="destructive">{emergencyCount}</Badge>
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Needs attention */}
+          <Card className="flex-1">
+            <CardHeader className="flex-row items-center justify-between">
+              <div className="space-y-1">
+                <CardTitle>Needs attention</CardTitle>
+                <CardDescription>Billing & account issues</CardDescription>
+              </div>
+              <TriangleAlert className="size-4 text-warning" />
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {loading ? (
+                [0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-15 rounded-lg" />
+                ))
+              ) : needsAttention.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No issues found.</p>
+              ) : (
+                needsAttention.map((u) => {
+                  const isLocked = u.lockedUntil && new Date(u.lockedUntil) > new Date();
+                  const reason = isLocked ? "Account locked" : "Payment past due";
+                  const name = emailToName(u.email);
+                  return (
+                    <Link
+                      key={u.id}
+                      href={`/users/${u.id}`}
+                      className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
+                    >
+                      <PatientAvatar name={name} color={emailToColor(u.email)} />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">{u.email}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {reason}
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Recent activity table */}

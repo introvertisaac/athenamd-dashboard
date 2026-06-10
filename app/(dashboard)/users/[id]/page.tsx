@@ -9,9 +9,11 @@ import {
   ArrowLeft,
   Bot,
   Calendar,
+  Cable,
   Clock,
   CreditCard,
   ExternalLink,
+  FileText,
   FlaskConical,
   Lock,
   Mail,
@@ -47,6 +49,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -61,7 +71,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, type UserDetail } from "@/lib/api";
+import {
+  api,
+  type UserDetail,
+  type MedicalHistoryResponse,
+  type TrackingResponse,
+  type LabResultItem,
+  type DocumentItem,
+  type UserIntegration,
+} from "@/lib/api";
+import { ScoreRing } from "@/components/dashboard/score-ring";
 import type { AccountStatus } from "@/lib/types";
 import { cn, formatDate, formatDateTime, relativeTime } from "@/lib/utils";
 
@@ -117,6 +136,79 @@ export default function UserDetailPage() {
   const [actionLoading, setActionLoading] = React.useState(false);
   const [newRole, setNewRole] = React.useState<"PATIENT" | "ADMIN">("PATIENT");
   const [deleteConfirmEmail, setDeleteConfirmEmail] = React.useState("");
+
+  // ── Clinical tab state ────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = React.useState("overview");
+
+  const [medHistory, setMedHistory] = React.useState<MedicalHistoryResponse["data"] | null>(null);
+  const [medHistoryLoading, setMedHistoryLoading] = React.useState(false);
+  const [medHistoryError, setMedHistoryError] = React.useState(false);
+
+  React.useEffect(() => {
+    if (activeTab !== "health" || medHistory !== null || medHistoryLoading || !user) return;
+    setMedHistoryLoading(true);
+    setMedHistoryError(false);
+    api.admin.users.getMedicalHistory(user.id)
+      .then((res) => setMedHistory(res.data))
+      .catch(() => setMedHistoryError(true))
+      .finally(() => setMedHistoryLoading(false));
+  }, [activeTab, medHistory, medHistoryLoading, user]);
+
+  const [docs, setDocs] = React.useState<DocumentItem[] | null>(null);
+  const [docsLoading, setDocsLoading] = React.useState(false);
+  const [docsError, setDocsError] = React.useState(false);
+
+  React.useEffect(() => {
+    if (activeTab !== "documents" || docs !== null || docsLoading || !user) return;
+    setDocsLoading(true);
+    setDocsError(false);
+    api.admin.users.getDocuments(user.id)
+      .then((res) => setDocs(res.data))
+      .catch(() => setDocsError(true))
+      .finally(() => setDocsLoading(false));
+  }, [activeTab, docs, docsLoading, user]);
+
+  const [userIntegrations, setUserIntegrations] = React.useState<UserIntegration[] | null>(null);
+  const [userIntegrationsLoading, setUserIntegrationsLoading] = React.useState(false);
+  const [userIntegrationsError, setUserIntegrationsError] = React.useState(false);
+
+  React.useEffect(() => {
+    if (activeTab !== "user-integrations" || userIntegrations !== null || userIntegrationsLoading || !user) return;
+    setUserIntegrationsLoading(true);
+    setUserIntegrationsError(false);
+    api.admin.users.getIntegrations(user.id)
+      .then((res) => setUserIntegrations(res.data))
+      .catch(() => setUserIntegrationsError(true))
+      .finally(() => setUserIntegrationsLoading(false));
+  }, [activeTab, userIntegrations, userIntegrationsLoading, user]);
+
+  const [labs, setLabs] = React.useState<LabResultItem[] | null>(null);
+  const [labsLoading, setLabsLoading] = React.useState(false);
+  const [labsError, setLabsError] = React.useState(false);
+
+  React.useEffect(() => {
+    if (activeTab !== "labs" || labs !== null || labsLoading || !user) return;
+    setLabsLoading(true);
+    setLabsError(false);
+    api.admin.users.getLabs(user.id, { limit: 200 })
+      .then((res) => setLabs(res.data))
+      .catch(() => setLabsError(true))
+      .finally(() => setLabsLoading(false));
+  }, [activeTab, labs, labsLoading, user]);
+
+  const [tracking, setTracking] = React.useState<TrackingResponse | null>(null);
+  const [trackingLoading, setTrackingLoading] = React.useState(false);
+  const [trackingError, setTrackingError] = React.useState(false);
+
+  React.useEffect(() => {
+    if (activeTab !== "tracking" || tracking !== null || trackingLoading || !user) return;
+    setTrackingLoading(true);
+    setTrackingError(false);
+    api.admin.users.getTracking(user.id)
+      .then((res) => setTracking(res))
+      .catch(() => setTrackingError(true))
+      .finally(() => setTrackingLoading(false));
+  }, [activeTab, tracking, trackingLoading, user]);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -302,7 +394,7 @@ export default function UserDetailPage() {
       </motion.div>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue="overview" onValueChange={setActiveTab}>
         <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
@@ -315,6 +407,8 @@ export default function UserDetailPage() {
               </TabsTrigger>
               <TabsTrigger value="labs">Labs</TabsTrigger>
               <TabsTrigger value="tracking">Tracking</TabsTrigger>
+              <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="user-integrations">Integrations</TabsTrigger>
               <TabsTrigger value="protocol">Protocol</TabsTrigger>
               <TabsTrigger value="coach">Coach</TabsTrigger>
             </>
@@ -548,31 +642,278 @@ export default function UserDetailPage() {
         {/* ═══════════ CLINICAL (gated) — all placeholder ═══════════ */}
         {clinicalAccess && (
           <>
-            <TabsContent value="health">
-              <EmptyState
-                icon={Stethoscope}
-                title="Requires backend integration"
-                description="Health data endpoints are coming in Workstream B."
-                className="mt-4"
-              />
+            <TabsContent value="health" className="mt-4 space-y-4">
+              {medHistoryLoading ? (
+                <div className="space-y-3">
+                  {[0, 1, 2].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+                </div>
+              ) : medHistoryError ? (
+                <EmptyState icon={Stethoscope} title="Failed to load medical history" className="mt-4" />
+              ) : medHistory ? (
+                <>
+                  <MedHistorySection title="Allergies">
+                    {medHistory.allergies.length === 0 ? <NoData /> : medHistory.allergies.map((a) => (
+                      <div key={a.id} className="text-sm">
+                        <span className="font-medium">{a.name}</span>
+                        {a.reaction && <span className="text-muted-foreground"> — {a.reaction}</span>}
+                        {a.severity && <span className="ml-2 text-xs text-muted-foreground">({a.severity})</span>}
+                      </div>
+                    ))}
+                  </MedHistorySection>
+                  <MedHistorySection title="Past Conditions">
+                    {medHistory.pastConditions.length === 0 ? <NoData /> : medHistory.pastConditions.map((c) => (
+                      <div key={c.id} className="text-sm">
+                        <span className="font-medium">{c.name}</span>
+                        {c.diagnosedYear && <span className="text-muted-foreground"> ({c.diagnosedYear})</span>}
+                        {c.notes && <p className="text-xs text-muted-foreground">{c.notes}</p>}
+                      </div>
+                    ))}
+                  </MedHistorySection>
+                  <MedHistorySection title="Surgeries">
+                    {medHistory.surgeries.length === 0 ? <NoData /> : medHistory.surgeries.map((s) => (
+                      <div key={s.id} className="text-sm">
+                        <span className="font-medium">{s.procedure}</span>
+                        {s.year && <span className="text-muted-foreground"> ({s.year})</span>}
+                        {s.notes && <p className="text-xs text-muted-foreground">{s.notes}</p>}
+                      </div>
+                    ))}
+                  </MedHistorySection>
+                  <MedHistorySection title="Family History">
+                    {medHistory.familyHistory.length === 0 ? <NoData /> : medHistory.familyHistory.map((f) => (
+                      <div key={f.id} className="text-sm">
+                        <span className="font-medium">{f.relation}</span>
+                        <span className="text-muted-foreground"> — {f.condition}</span>
+                      </div>
+                    ))}
+                  </MedHistorySection>
+                  <MedHistorySection title="Social History">
+                    {!medHistory.socialHistory ? <NoData /> : (
+                      <div className="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
+                        {medHistory.socialHistory.smokingStatus && (
+                          <Field label="Smoking" value={String(medHistory.socialHistory.smokingStatus)} />
+                        )}
+                        {medHistory.socialHistory.alcoholConsumption && (
+                          <Field label="Alcohol" value={String(medHistory.socialHistory.alcoholConsumption)} />
+                        )}
+                        {medHistory.socialHistory.exerciseLevel && (
+                          <Field label="Exercise" value={String(medHistory.socialHistory.exerciseLevel)} />
+                        )}
+                      </div>
+                    )}
+                  </MedHistorySection>
+                  <MedHistorySection title="Medications">
+                    {medHistory.medications.length === 0 ? <NoData /> : medHistory.medications.map((m) => (
+                      <div key={m.id} className="text-sm">
+                        <span className="font-medium">{m.name}</span>
+                        {m.dose && <span className="text-muted-foreground"> {m.dose}</span>}
+                        {m.frequency && <span className="text-muted-foreground"> · {m.frequency}</span>}
+                      </div>
+                    ))}
+                  </MedHistorySection>
+                </>
+              ) : null}
             </TabsContent>
 
-            <TabsContent value="labs">
-              <EmptyState
-                icon={FlaskConical}
-                title="Requires backend integration"
-                description="Lab result endpoints are coming in Workstream B."
-                className="mt-4"
-              />
+            <TabsContent value="labs" className="mt-4">
+              {labsLoading ? (
+                <Skeleton className="h-64 rounded-xl" />
+              ) : labsError ? (
+                <EmptyState icon={FlaskConical} title="Failed to load lab results" className="mt-4" />
+              ) : labs !== null ? (
+                <Card>
+                  <CardContent className="p-0">
+                    {labs.length === 0 ? (
+                      <EmptyState icon={FlaskConical} title="No lab results" description="No lab results have been uploaded for this user." className="m-5" />
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="pl-5">Marker</TableHead>
+                            <TableHead>Value</TableHead>
+                            <TableHead>Reference range</TableHead>
+                            <TableHead>Panel</TableHead>
+                            <TableHead>Lab</TableHead>
+                            <TableHead className="pr-5">Collected</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {labs.map((lab) => (
+                            <TableRow key={lab.id} className={lab.flagged ? "bg-destructive/5" : undefined}>
+                              <TableCell className="pl-5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium">{lab.markerName}</span>
+                                  {lab.flagged && <Badge variant="destructive" className="text-xs">Flagged</Badge>}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sm font-medium tabular-nums">
+                                {lab.value} {lab.unit}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {lab.referenceRange ?? "—"}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {lab.panelName ?? "—"}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {lab.labName ?? "—"}
+                              </TableCell>
+                              <TableCell className="pr-5 text-sm text-muted-foreground">
+                                {formatDate(lab.collectedDate)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : null}
             </TabsContent>
 
-            <TabsContent value="tracking">
-              <EmptyState
-                icon={Activity}
-                title="Requires backend integration"
-                description="Tracking data endpoints are coming in Workstream B."
-                className="mt-4"
-              />
+            <TabsContent value="tracking" className="mt-4">
+              {trackingLoading ? (
+                <div className="space-y-3">
+                  {[0, 1].map((i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
+                </div>
+              ) : trackingError ? (
+                <EmptyState icon={Activity} title="Failed to load tracking data" className="mt-4" />
+              ) : tracking ? (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Health Snapshot</CardTitle>
+                      <CardDescription>Rolling window stats from logged data</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+                      <Field label="Symptoms (last 30d)" value={String(tracking.dashboard.data.symptomsLast30)} />
+                      <Field
+                        label="Avg severity (last 30d)"
+                        value={tracking.dashboard.data.avgSeverityLast30 != null ? String(tracking.dashboard.data.avgSeverityLast30) : "—"}
+                      />
+                      <Field label="Meals logged (last 7d)" value={String(tracking.dashboard.data.mealsLast7)} />
+                      <Field
+                        label="Avg sleep (last 7d)"
+                        value={tracking.dashboard.data.avgSleepHoursLast7 != null ? `${tracking.dashboard.data.avgSleepHoursLast7}h` : "—"}
+                      />
+                      <Field label="Active medications" value={String(tracking.dashboard.data.activeMedications)} />
+                      <Field label="Active supplements" value={String(tracking.dashboard.data.activeSupplements)} />
+                      {tracking.dashboard.data.latestWeight && (
+                        <Field
+                          label="Latest weight"
+                          value={`${tracking.dashboard.data.latestWeight.value} ${tracking.dashboard.data.latestWeight.unit}`}
+                        />
+                      )}
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Metabolic Score</CardTitle>
+                      <CardDescription>Composite score out of 100</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-start gap-6">
+                        <ScoreRing score={tracking.summary.data.metabolicScore} size={80} />
+                        <div className="flex-1 grid gap-y-2 gap-x-8 grid-cols-2">
+                          {(["labs", "symptoms", "sleep", "lifestyle", "nutrition"] as const).map((domain) => {
+                            const score = tracking.summary.data.scoreBreakdown[domain];
+                            const max = tracking.summary.data.scoreBreakdown[`${domain}Max` as keyof typeof tracking.summary.data.scoreBreakdown];
+                            return (
+                              <Field key={domain} label={domain.charAt(0).toUpperCase() + domain.slice(1)} value={`${score} / ${max}`} />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : null}
+            </TabsContent>
+
+            <TabsContent value="documents" className="mt-4">
+              {docsLoading ? (
+                <Skeleton className="h-48 rounded-xl" />
+              ) : docsError ? (
+                <EmptyState icon={FileText} title="Failed to load documents" className="mt-4" />
+              ) : docs !== null ? (
+                <Card>
+                  <CardContent className="p-0">
+                    {docs.length === 0 ? (
+                      <EmptyState icon={FileText} title="No documents" description="No documents have been uploaded for this user." className="m-5" />
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="pl-5">Filename</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>OCR status</TableHead>
+                            <TableHead>Uploaded</TableHead>
+                            <TableHead className="pr-5 text-right">Download</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {docs.map((doc) => (
+                            <TableRow key={doc.id}>
+                              <TableCell className="pl-5 text-sm font-medium">{doc.originalFilename}</TableCell>
+                              <TableCell><Badge variant="secondary">{doc.docType.replace(/_/g, " ")}</Badge></TableCell>
+                              <TableCell>
+                                <Badge variant={doc.ocrStatus === "COMPLETE" ? "success" : doc.ocrStatus === "FAILED" ? "destructive" : "warning"}>
+                                  {doc.ocrStatus}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">{formatDate(doc.uploadedAt)}</TableCell>
+                              <TableCell className="pr-5 text-right">
+                                <Button variant="ghost" size="sm" asChild>
+                                  <a href={doc.downloadUrl} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="size-3.5" />
+                                    Open
+                                  </a>
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : null}
+            </TabsContent>
+
+            <TabsContent value="user-integrations" className="mt-4">
+              {userIntegrationsLoading ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {[0, 1, 2].map((i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+                </div>
+              ) : userIntegrationsError ? (
+                <EmptyState icon={Cable} title="Failed to load integrations" className="mt-4" />
+              ) : userIntegrations !== null ? (
+                userIntegrations.filter((i) => i.status !== "NOT_CONNECTED").length === 0 ? (
+                  <EmptyState icon={Cable} title="No connected integrations" description="This user has not connected any health integrations." className="mt-4" />
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {userIntegrations.filter((i) => i.status !== "NOT_CONNECTED").map((integration) => (
+                      <Card key={integration.provider}>
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-semibold">{integration.provider.replace(/_/g, " ")}</CardTitle>
+                            <Badge variant={integration.status === "CONNECTED" ? "success" : integration.status === "ERROR" ? "destructive" : "warning"}>
+                              {integration.status}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-1 text-xs text-muted-foreground">
+                          {integration.lastSyncedAt && (
+                            <p>Last synced: {formatDate(integration.lastSyncedAt)}</p>
+                          )}
+                          {integration.errorMessage && (
+                            <p className="text-destructive">{integration.errorMessage}</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )
+              ) : null}
             </TabsContent>
 
             <TabsContent value="protocol">
@@ -738,4 +1079,21 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
       <p className={cn("text-sm font-medium", mono && "font-mono text-xs")}>{value}</p>
     </div>
   );
+}
+
+function MedHistorySection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">{children}</CardContent>
+    </Card>
+  );
+}
+
+function NoData() {
+  return <p className="text-sm text-muted-foreground">No data recorded</p>;
 }

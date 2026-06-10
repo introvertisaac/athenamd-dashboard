@@ -7,6 +7,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  LabelList,
   Line,
   LineChart,
   Pie,
@@ -226,6 +227,42 @@ export function SingleBarChart({
               fill={colorKey ? (entry[colorKey] as string) : color}
             />
           ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function FunnelBarChart({
+  data,
+  height = 260,
+  color = "var(--chart-1)",
+}: {
+  data: { label: string; value: number; pct?: number }[];
+  height?: number;
+  color?: string;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 4, right: 60, left: 0, bottom: 4 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+        <XAxis type="number" {...axisProps} />
+        <YAxis type="category" dataKey="label" {...axisProps} width={120} />
+        <Tooltip
+          cursor={{ fill: "var(--muted)", opacity: 0.5 }}
+          content={<ChartTooltip />}
+        />
+        <Bar dataKey="value" fill={color} radius={[0, 4, 4, 0]} maxBarSize={28}>
+          <LabelList
+            dataKey="pct"
+            position="right"
+            formatter={(v: unknown) => (typeof v === "number" ? `${v.toFixed(0)}%` : "")}
+            style={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+          />
         </Bar>
       </BarChart>
     </ResponsiveContainer>

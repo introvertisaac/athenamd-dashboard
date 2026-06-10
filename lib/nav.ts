@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   ScrollText,
   Settings,
+  ShieldAlert,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -20,6 +21,8 @@ export interface NavItem {
   group: NavGroup;
   /** Only visible to staff with clinical data access. */
   clinical?: boolean;
+  /** Dynamic count badge rendered next to the label (0 hides the badge). */
+  badge?: number;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -29,6 +32,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Subscriptions", href: "/subscriptions", icon: CreditCard, group: "Operations" },
   { label: "Onboarding", href: "/onboarding", icon: ClipboardList, group: "Operations" },
   { label: "Integrations", href: "/integrations", icon: Cable, group: "Operations" },
+  { label: "Emergency", href: "/emergency", icon: ShieldAlert, group: "Operations" },
   { label: "Audit Logs", href: "/audit-logs", icon: ScrollText, group: "System" },
   { label: "Settings", href: "/settings", icon: Settings, group: "System" },
   {
