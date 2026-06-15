@@ -457,6 +457,79 @@ export interface FunnelResponse {
   };
 }
 
+// ─── Admin documents (C1–C2) ─────────────────────────────────────────────────
+
+export interface AdminDocumentItem {
+  id: string;
+  userId: string;
+  userEmail: string;
+  docType: "LAB_REPORT" | "IMAGING" | "PRESCRIPTION" | "OTHER";
+  originalFilename: string;
+  mimeType: string;
+  ocrStatus: "PENDING" | "PROCESSING" | "COMPLETE" | "FAILED";
+  downloadUrl: string;
+  uploadedAt: string;
+}
+
+export interface AdminDocumentsParams {
+  page?: number;
+  limit?: number;
+  ocrStatus?: "PENDING" | "PROCESSING" | "COMPLETE" | "FAILED";
+  docType?: "LAB_REPORT" | "IMAGING" | "PRESCRIPTION" | "OTHER";
+  userId?: string;
+}
+
+export interface ReprocessResponse {
+  data: {
+    id: string;
+    ocrStatus: "PENDING" | "PROCESSING" | "COMPLETE" | "FAILED";
+    updatedAt: string;
+  };
+}
+
+// ─── Admin flagged labs (C3) ──────────────────────────────────────────────────
+
+export interface AdminFlaggedLabItem {
+  id: string;
+  userId: string;
+  userEmail: string;
+  markerName: string;
+  value: number;
+  unit: string;
+  referenceRange: string | null;
+  panelName: string | null;
+  labName: string | null;
+  collectedDate: string;
+  createdAt: string;
+}
+
+export interface AdminFlaggedLabsParams {
+  page?: number;
+  limit?: number;
+  marker?: string;
+  from?: string;
+  to?: string;
+}
+
+// ─── Admin integrations by provider (C4) ─────────────────────────────────────
+
+export interface AdminIntegrationUser {
+  id: string;
+  userId: string;
+  userEmail: string;
+  provider: string;
+  status: "CONNECTED" | "DISCONNECTED" | "ERROR" | "PENDING";
+  connectedAt: string;
+  lastSyncedAt: string | null;
+  errorMessage: string | null;
+}
+
+export interface AdminIntegrationsByProviderParams {
+  page?: number;
+  limit?: number;
+  status?: "CONNECTED" | "DISCONNECTED" | "ERROR" | "PENDING";
+}
+
 // ─── Internal fetch helper ─────────────────────────────────────────────────
 
 let isRefreshing = false;
@@ -687,9 +760,40 @@ export const api = {
       },
     },
 
+    documents: {
+      list(params: AdminDocumentsParams = {}): Promise<PaginatedResponse<AdminDocumentItem>> {
+        return apiFetch<PaginatedResponse<AdminDocumentItem>>(
+          `/api/v1/admin/documents${buildQuery(params as Record<string, unknown>)}`
+        );
+      },
+
+      reprocess(id: string): Promise<ReprocessResponse> {
+        return apiFetch<ReprocessResponse>(`/api/v1/admin/documents/${id}/reprocess`, {
+          method: "PATCH",
+        });
+      },
+    },
+
+    labs: {
+      flaggedList(params: AdminFlaggedLabsParams = {}): Promise<PaginatedResponse<AdminFlaggedLabItem>> {
+        return apiFetch<PaginatedResponse<AdminFlaggedLabItem>>(
+          `/api/v1/admin/labs/flagged${buildQuery(params as Record<string, unknown>)}`
+        );
+      },
+    },
+
     integrations: {
       summary(): Promise<IntegrationsSummaryResponse> {
         return apiFetch<IntegrationsSummaryResponse>("/api/v1/admin/integrations/summary");
+      },
+
+      listByProvider(
+        provider: string,
+        params: AdminIntegrationsByProviderParams = {}
+      ): Promise<PaginatedResponse<AdminIntegrationUser>> {
+        return apiFetch<PaginatedResponse<AdminIntegrationUser>>(
+          `/api/v1/admin/integrations/${provider}/users${buildQuery(params as Record<string, unknown>)}`
+        );
       },
     },
 

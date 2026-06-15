@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { AlertTriangle, Cable, CheckCircle2, Plug, Zap } from "lucide-react";
+import { AlertTriangle, Cable, CheckCircle2, ChevronRight, Plug, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -133,13 +134,13 @@ export default function IntegrationsPage() {
                   const pendingCount = item.statusBreakdown["PENDING"] ?? 0;
                   const hasErrors = errorCount > 0;
                   return (
+                    <Link key={item.provider} href={`/integrations/${item.provider}`} className="block">
                     <motion.div
-                      key={item.provider}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.25, delay: idx * 0.04 }}
                     >
-                      <Card className={`h-full${hasErrors ? " border-warning/50" : ""}`}>
+                      <Card className={`h-full cursor-pointer transition-colors hover:border-primary/40${hasErrors ? " border-warning/50" : ""}`}>
                         <CardHeader>
                           <div className="flex items-start justify-between">
                             <span
@@ -181,17 +182,14 @@ export default function IntegrationsPage() {
                             <span className="text-sm text-muted-foreground">
                               {item.totalConnected} patient{item.totalConnected !== 1 ? "s" : ""} connected
                             </span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => toast.success(`${meta.name} settings opened (demo).`)}
-                            >
-                              Configure
-                            </Button>
+                            <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                              View users <ChevronRight className="size-3.5" />
+                            </span>
                           </div>
                         </CardContent>
                       </Card>
                     </motion.div>
+                    </Link>
                   );
                 })}
               </div>

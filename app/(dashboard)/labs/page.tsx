@@ -1,31 +1,23 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Activity,
   FlaskConical,
-  Search,
   TriangleAlert,
   Users,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { PatientAvatar } from "@/components/dashboard/patient-avatar";
-import { LabStatusBadge } from "@/components/dashboard/badges";
 import { EmptyState } from "@/components/dashboard/empty-state";
-import { SingleBarChart } from "@/components/dashboard/charts";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -34,173 +26,145 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PATIENTS_ONLY, getLabs, getPatient, labStatus } from "@/lib/data";
+import { api, type AdminFlaggedLabItem } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import type { LabResult } from "@/lib/types";
 
-type Row = LabResult & { patientId: string; patientName: string; patientColor: string };
+const PAGE_SIZE = 20;
 
 export default function LabsPage() {
-  const router = useRouter();
-  const [query, setQuery] = React.useState("");
-  const [category, setCategory] = React.useState("all");
-  const [status, setStatus] = React.useState("all");
+  const [marker, setMarker] = React.useState("");
+  const [from, setFrom] = React.useState("");
+  const [to, setTo] = React.useState("");
+  const [debouncedMarker, setDebouncedMarker] = React.useState("");
+  const [page, setPage] = React.useState(1);
 
-  const allRows: Row[] = React.useMemo(() => {
-    return PATIENTS_ONLY.flatMap((p) =>
-      getLabs(p.id).map((l) => ({
-        ...l,
-        patientId: p.id,
-        patientName: p.name,
-        patientColor: p.avatarColor,
-      })),
-    );
-  }, []);
+  const [labs, setLabs] = React.useState<AdminFlaggedLabItem[]>([]);
+  const [total, setTotal] = React.useState(0);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(false);
 
-  const categories = React.useMemo(
-    () => Array.from(new Set(allRows.map((r) => r.category))).sort(),
-    [allRows],
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedMarker(marker), 400);
+    return () => clearTimeout(t);
+  }, [marker]);
+
+  React.useEffect(() => { setPage(1); }, [debouncedMarker, from, to]);
+
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const res = await api.admin.labs.flaggedList({
+        page,
+        limit: PAGE_SIZE,
+        ...(debouncedMarker ? { marker: debouncedMarker } : {}),
+        ...(from ? { from: new Date(from).toISOString() } : {}),
+        ...(to ? { to: new Date(to + "T23:59:59").toISOString() } : {}),
+      });
+      setLabs(res.data);
+      setTotal(res.total);
+    } catch {
+      setError(true);
+      toast.error("Failed to load flagged labs");
+    } finally {
+      setLoading(false);
+    }
+  }, [page, debouncedMarker, from, to]);
+
+  React.useEffect(() => { void load(); }, [load]);
+
+  const uniquePatients = React.useMemo(
+    () => new Set(labs.map((r) => r.userId)).size,
+    [labs],
   );
 
-  const filtered = allRows.filter((r) => {
-    if (
-      query &&
-      !`${r.marker} ${r.patientName}`.toLowerCase().includes(query.toLowerCase())
-    )
-      return false;
-    if (category !== "all" && r.category !== category) return false;
-    if (status !== "all" && labStatus(r) !== status) return false;
-    return true;
-  });
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const hasFilters = marker !== "" || from !== "" || to !== "";
 
-  const flaggedTotal = allRows.filter((r) => labStatus(r) === "out_of_range").length;
-  const suboptimalTotal = allRows.filter((r) => labStatus(r) === "suboptimal").length;
-  const patientsWithFlags = new Set(
-    allRows.filter((r) => labStatus(r) === "out_of_range").map((r) => r.patientId),
-  ).size;
-
-  // most-flagged markers
-  const markerFlagCount: Record<string, number> = {};
-  allRows.forEach((r) => {
-    if (labStatus(r) === "out_of_range")
-      markerFlagCount[r.marker] = (markerFlagCount[r.marker] ?? 0) + 1;
-  });
-  const topFlagged = Object.entries(markerFlagCount)
-    .map(([marker, count]) => ({ marker, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 6);
-
-  const hasFilters = query || category !== "all" || status !== "all";
+  function clearFilters() {
+    setMarker("");
+    setFrom("");
+    setTo("");
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Labs"
-        description="Every lab marker across the user population, with functional-range flags."
+        title="Flagged Labs"
+        description="Lab results flagged as out of range across the user population."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard index={0} label="Markers tracked" value={allRows.length} icon={Activity} />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard
+          index={0}
+          label="Flagged markers (total)"
+          value={loading ? "—" : total}
+          icon={Activity}
+        />
         <StatCard
           index={1}
           label="Out of range"
-          value={flaggedTotal}
+          value={loading ? "—" : total}
           icon={TriangleAlert}
           accent="destructive"
         />
         <StatCard
           index={2}
-          label="Suboptimal"
-          value={suboptimalTotal}
-          icon={FlaskConical}
-          accent="warning"
-        />
-        <StatCard
-          index={3}
-          label="Users with flags"
-          value={patientsWithFlags}
+          label="Unique patients (page)"
+          value={loading ? "—" : uniquePatients}
           icon={Users}
           accent="info"
         />
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Most-flagged markers</CardTitle>
-          <CardDescription>
-            Markers most frequently out of conventional range
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <SingleBarChart
-            data={topFlagged}
-            xKey="marker"
-            dataKey="count"
-            color="var(--destructive)"
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search marker or user…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3 lg:flex">
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="lg:w-44">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All categories</SelectItem>
-                {categories.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="lg:w-44">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="optimal">Optimal</SelectItem>
-                <SelectItem value="suboptimal">Suboptimal</SelectItem>
-                <SelectItem value="out_of_range">Out of range</SelectItem>
-              </SelectContent>
-            </Select>
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="relative flex-1">
+              <FlaskConical className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Filter by marker name (exact match)…"
+                value={marker}
+                onChange={(e) => setMarker(e.target.value)}
+                className="pl-9"
+              />
+            </div>
             {hasFilters && (
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setQuery("");
-                  setCategory("all");
-                  setStatus("all");
-                }}
-                className="text-muted-foreground"
-              >
+              <Button variant="ghost" onClick={clearFilters} className="text-muted-foreground">
                 <X className="size-4" />
                 Clear
               </Button>
             )}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="labs-from" className="text-sm text-muted-foreground whitespace-nowrap">From</Label>
+              <Input id="labs-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-40" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="labs-to" className="text-sm text-muted-foreground whitespace-nowrap">To</Label>
+              <Input id="labs-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" />
+            </div>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardContent className="p-0">
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="space-y-px p-4">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-12 rounded-lg" />
+              ))}
+            </div>
+          ) : error ? (
+            <EmptyState icon={FlaskConical} title="Failed to load flagged labs" className="m-5">
+              <Button variant="outline" size="sm" onClick={() => void load()}>Retry</Button>
+            </EmptyState>
+          ) : labs.length === 0 ? (
             <EmptyState
               icon={FlaskConical}
-              title="No lab markers match your filters"
+              title="No flagged labs match your filters"
               className="m-5"
             />
           ) : (
@@ -209,44 +173,34 @@ export default function LabsPage() {
                 <TableRow>
                   <TableHead className="pl-5">User</TableHead>
                   <TableHead>Marker</TableHead>
-                  <TableHead>Category</TableHead>
                   <TableHead>Value</TableHead>
-                  <TableHead>Functional range</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead>Reference range</TableHead>
+                  <TableHead>Lab</TableHead>
                   <TableHead className="pr-5">Collected</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.slice(0, 60).map((r) => (
-                  <TableRow
-                    key={r.id}
-                    className="cursor-pointer"
-                    onClick={() => router.push(`/users/${r.patientId}`)}
-                  >
-                    <TableCell className="pl-5">
-                      <div className="flex items-center gap-2.5">
-                        <PatientAvatar
-                          name={r.patientName}
-                          color={r.patientColor}
-                          className="size-7 text-[0.65rem]"
-                        />
-                        <span className="text-sm font-medium">
-                          {r.patientName}
-                        </span>
-                      </div>
+                {labs.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="pl-5 text-sm">
+                      <Link
+                        href={`/users/${r.userId}`}
+                        className="font-medium hover:underline"
+                      >
+                        {r.userEmail}
+                      </Link>
                     </TableCell>
-                    <TableCell className="font-medium">{r.marker}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {r.category}
+                    <TableCell className="font-medium">{r.markerName}</TableCell>
+                    <TableCell className="font-semibold tabular-nums text-destructive">
+                      {r.value}
                     </TableCell>
-                    <TableCell className="font-semibold tabular-nums">
-                      {r.value} {r.unit}
-                    </TableCell>
+                    <TableCell className="text-muted-foreground">{r.unit}</TableCell>
                     <TableCell className="tabular-nums text-muted-foreground">
-                      {r.functionalLow} – {r.functionalHigh} {r.unit}
+                      {r.referenceRange ?? "—"}
                     </TableCell>
-                    <TableCell>
-                      <LabStatusBadge status={labStatus(r)} />
+                    <TableCell className="text-sm text-muted-foreground">
+                      {r.labName ?? "—"}
                     </TableCell>
                     <TableCell className="pr-5 text-muted-foreground">
                       {formatDate(r.collectedDate)}
@@ -258,11 +212,31 @@ export default function LabsPage() {
           )}
         </CardContent>
       </Card>
-      {filtered.length > 60 && (
-        <p className="text-center text-sm text-muted-foreground">
-          Showing first 60 of {filtered.length} markers — refine filters to
-          narrow results.
-        </p>
+
+      {!loading && !error && total > PAGE_SIZE && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );
