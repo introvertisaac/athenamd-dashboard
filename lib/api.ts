@@ -530,6 +530,86 @@ export interface AdminIntegrationsByProviderParams {
   status?: "CONNECTED" | "DISCONNECTED" | "ERROR" | "PENDING";
 }
 
+// ─── Clinician contacts ──────────────────────────────────────────────────────
+
+export interface ClinicianContact {
+  id: string;
+  name: string;
+  specialty: string | null;
+  practice: string | null;
+  phone: string | null;
+  fax: string | null;
+  email: string | null;
+  address: string | null;
+  isPrimary: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ContactsResponse {
+  data: ClinicianContact[];
+}
+
+// ─── Global search ───────────────────────────────────────────────────────────
+
+export interface GlobalSearchUser {
+  id: string;
+  email: string;
+  fullName: string | null;
+  role: "PATIENT" | "ADMIN";
+  tier: "FREE" | "PRO" | "PREMIUM" | null;
+}
+
+export interface GlobalSearchDocument {
+  id: string;
+  userId: string;
+  userEmail: string;
+  originalFilename: string;
+  docType: "LAB_REPORT" | "IMAGING" | "PRESCRIPTION" | "OTHER";
+  ocrStatus: "PENDING" | "PROCESSING" | "COMPLETE" | "FAILED";
+}
+
+export interface GlobalSearchLabResult {
+  id: string;
+  userId: string;
+  userEmail: string;
+  markerName: string;
+  value: number;
+  unit: string;
+  flagged: boolean;
+}
+
+export interface GlobalSearchContact {
+  id: string;
+  userId: string;
+  userEmail: string;
+  name: string;
+  specialty: string | null;
+}
+
+export interface GlobalSearchEmergencyEvent {
+  id: string;
+  userId: string;
+  userEmail: string;
+  type: EmergencyEventType;
+  status: EmergencyEventStatus;
+  detectedAt: string;
+}
+
+export interface GlobalSearchResults {
+  users: GlobalSearchUser[];
+  documents: GlobalSearchDocument[];
+  labResults: GlobalSearchLabResult[];
+  contacts: GlobalSearchContact[];
+  emergencyEvents: GlobalSearchEmergencyEvent[];
+}
+
+export interface GlobalSearchResponse {
+  data: GlobalSearchResults;
+  totalResults: number;
+}
+
 // ─── Internal fetch helper ─────────────────────────────────────────────────
 
 let isRefreshing = false;
@@ -716,6 +796,10 @@ export const api = {
       getIntegrations(id: string): Promise<UserIntegrationsResponse> {
         return apiFetch<UserIntegrationsResponse>(`/api/v1/admin/users/${id}/integrations`);
       },
+
+      getContacts(id: string): Promise<ContactsResponse> {
+        return apiFetch<ContactsResponse>(`/api/v1/admin/users/${id}/contacts`);
+      },
     },
 
     billing: {
@@ -821,6 +905,12 @@ export const api = {
       funnel(): Promise<FunnelResponse> {
         return apiFetch<FunnelResponse>("/api/v1/admin/analytics/funnel");
       },
+    },
+
+    search(params: { q: string; limit?: number }): Promise<GlobalSearchResponse> {
+      return apiFetch<GlobalSearchResponse>(
+        `/api/v1/admin/search${buildQuery(params as Record<string, unknown>)}`
+      );
     },
   },
 };

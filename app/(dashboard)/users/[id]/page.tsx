@@ -79,7 +79,9 @@ import {
   type LabResultItem,
   type DocumentItem,
   type UserIntegration,
+  type ClinicianContact,
 } from "@/lib/api";
+import { ContactsTab } from "@/components/dashboard/contacts-tab";
 import { ScoreRing } from "@/components/dashboard/score-ring";
 import type { AccountStatus } from "@/lib/types";
 import { cn, formatDate, formatDateTime, relativeTime } from "@/lib/utils";
@@ -181,6 +183,20 @@ export default function UserDetailPage() {
       .catch(() => setUserIntegrationsError(true))
       .finally(() => setUserIntegrationsLoading(false));
   }, [activeTab, userIntegrations, userIntegrationsLoading, user]);
+
+  const [contacts, setContacts] = React.useState<ClinicianContact[] | null>(null);
+  const [contactsLoading, setContactsLoading] = React.useState(false);
+  const [contactsError, setContactsError] = React.useState(false);
+
+  React.useEffect(() => {
+    if (activeTab !== "contacts" || contacts !== null || contactsLoading || !user) return;
+    setContactsLoading(true);
+    setContactsError(false);
+    api.admin.users.getContacts(user.id)
+      .then((res) => setContacts(res.data))
+      .catch(() => setContactsError(true))
+      .finally(() => setContactsLoading(false));
+  }, [activeTab, contacts, contactsLoading, user]);
 
   const [labs, setLabs] = React.useState<LabResultItem[] | null>(null);
   const [labsLoading, setLabsLoading] = React.useState(false);
@@ -409,6 +425,7 @@ export default function UserDetailPage() {
               <TabsTrigger value="tracking">Tracking</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
               <TabsTrigger value="user-integrations">Integrations</TabsTrigger>
+              <TabsTrigger value="contacts">Clinicians</TabsTrigger>
               <TabsTrigger value="protocol">Protocol</TabsTrigger>
               <TabsTrigger value="coach">Coach</TabsTrigger>
             </>
@@ -914,6 +931,14 @@ export default function UserDetailPage() {
                   </div>
                 )
               ) : null}
+            </TabsContent>
+
+            <TabsContent value="contacts" className="mt-4">
+              <ContactsTab
+                contacts={contacts}
+                loading={contactsLoading}
+                error={contactsError}
+              />
             </TabsContent>
 
             <TabsContent value="protocol">
