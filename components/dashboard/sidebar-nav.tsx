@@ -14,12 +14,25 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { clinicalAccess } = useAuth();
   const [emergencyCount, setEmergencyCount] = React.useState(0);
+  const [failedNotifCount, setFailedNotifCount] = React.useState(0);
 
   React.useEffect(() => {
     let cancelled = false;
     const poll = () => {
       api.admin.emergency.list({ limit: 1, status: "DETECTED" })
         .then((r) => { if (!cancelled) setEmergencyCount(r.total); })
+        .catch(() => { /* non-critical — badge stays at last known value */ });
+    };
+    poll();
+    const id = setInterval(poll, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const poll = () => {
+      api.admin.notifications.deliveryStats("24h")
+        .then((r) => { if (!cancelled) setFailedNotifCount(r.data.totalFailed); })
         .catch(() => { /* non-critical — badge stays at last known value */ });
     };
     poll();
@@ -81,7 +94,10 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                     />
                     <span className="flex-1">{item.label}</span>
                     {(() => {
-                      const badge = item.href === "/emergency" ? emergencyCount : (item.badge ?? 0);
+                      const badge =
+                        item.href === "/emergency" ? emergencyCount
+                        : item.href === "/notifications" ? failedNotifCount
+                        : (item.badge ?? 0);
                       return !!badge && (
                         <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[0.65rem] font-semibold text-destructive-foreground">
                           {badge > 99 ? "99+" : badge}

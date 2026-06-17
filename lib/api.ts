@@ -610,6 +610,128 @@ export interface GlobalSearchResponse {
   totalResults: number;
 }
 
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+export type NotificationType =
+  | "INTERACTION_ALERT"
+  | "LAB_READY"
+  | "SYMPTOM_FOLLOWUP"
+  | "DAILY_FOCUS"
+  | "LOGGING_REMINDER"
+  | "WEEKLY_REVIEW"
+  | "SCORE_DROP"
+  | "SLEEP_TREND"
+  | "ADHERENCE_DROP"
+  | "MED_REMINDER"
+  | "EMERGENCY_ALERT"
+  | "VITALS_TREND"
+  | "CONNECT_DEVICE";
+
+export type NotificationStatus =
+  | "PENDING"
+  | "READY"
+  | "SENT"
+  | "READ"
+  | "FAILED"
+  | "SUPPRESSED";
+
+export type NotificationStatsRange = "24h" | "7d" | "30d";
+
+export interface DeliveryLogItem {
+  id: string;
+  userId: string;
+  userEmail: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  status: NotificationStatus;
+  sentAt: string | null;
+  failedAt: string | null;
+  failReason: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface DeliveryLogParams {
+  page?: number;
+  limit?: number;
+  type?: NotificationType;
+  status?: NotificationStatus;
+  userId?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface TypeStat {
+  type: NotificationType;
+  sent: number;
+  failed: number;
+  pending: number;
+}
+
+export interface DeliveryStatsData {
+  totalSent: number;
+  totalFailed: number;
+  totalPending: number;
+  failureRate: number;
+  byType: TypeStat[];
+}
+
+export interface DeliveryStatsResponse {
+  data: DeliveryStatsData;
+}
+
+export interface ScheduleItem {
+  name: string;
+  interval: string;
+  lastRun: string | null;
+  lastEnqueued: number;
+  nextTickAt: string | null;
+}
+
+export interface ScheduledResponse {
+  data: {
+    schedulerStatus: string;
+    workerStatus: string;
+    lastWorkerTickAt: string | null;
+    lastWorkerDelivered: number;
+    nextWorkerTickAt: string | null;
+    activeSchedules: ScheduleItem[];
+  };
+}
+
+export interface PreferencesSummaryData {
+  totalUsers: number;
+  pushEnabled: number;
+  pushDisabled: number;
+  pushEnabledRate: number;
+  dailyFocusEnabled: number;
+  quietHoursEnabled: number;
+  avgMaxPerDay: number | null;
+  noPreferencesSet: number;
+}
+
+export interface PreferencesSummaryResponse {
+  data: PreferencesSummaryData;
+}
+
+export interface BroadcastBody {
+  title: string;
+  body: string;
+  type: NotificationType;
+  filter: {
+    tier?: "FREE" | "PRO" | "PREMIUM";
+    role: "PATIENT" | "ADMIN";
+  };
+}
+
+export interface BroadcastResponse {
+  data: {
+    enqueuedCount: number;
+    message: string;
+  };
+}
+
 // ─── Internal fetch helper ─────────────────────────────────────────────────
 
 let isRefreshing = false;
@@ -911,6 +1033,37 @@ export const api = {
       return apiFetch<GlobalSearchResponse>(
         `/api/v1/admin/search${buildQuery(params as Record<string, unknown>)}`
       );
+    },
+
+    notifications: {
+      deliveryLog(params: DeliveryLogParams = {}): Promise<PaginatedResponse<DeliveryLogItem>> {
+        return apiFetch<PaginatedResponse<DeliveryLogItem>>(
+          `/api/v1/admin/notifications/delivery-log${buildQuery(params as Record<string, unknown>)}`
+        );
+      },
+
+      deliveryStats(range: NotificationStatsRange = "24h"): Promise<DeliveryStatsResponse> {
+        return apiFetch<DeliveryStatsResponse>(
+          `/api/v1/admin/notifications/delivery-log/stats?range=${range}`
+        );
+      },
+
+      scheduled(): Promise<ScheduledResponse> {
+        return apiFetch<ScheduledResponse>("/api/v1/admin/notifications/scheduled");
+      },
+
+      preferencesSummary(): Promise<PreferencesSummaryResponse> {
+        return apiFetch<PreferencesSummaryResponse>(
+          "/api/v1/admin/notifications/preferences-summary"
+        );
+      },
+
+      broadcast(body: BroadcastBody): Promise<BroadcastResponse> {
+        return apiFetch<BroadcastResponse>("/api/v1/admin/notifications/broadcast", {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+      },
     },
   },
 };
