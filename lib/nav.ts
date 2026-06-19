@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Bell,
   Cable,
   ClipboardList,
   CreditCard,
@@ -35,6 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Onboarding", href: "/onboarding", icon: ClipboardList, group: "Operations" },
   { label: "Integrations", href: "/integrations", icon: Cable, group: "Operations" },
   { label: "Emergency", href: "/emergency", icon: ShieldAlert, group: "Operations" },
+  { label: "Notifications", href: "/notifications", icon: Bell, group: "Operations" },
   { label: "Audit Logs", href: "/audit-logs", icon: ScrollText, group: "System" },
   { label: "Settings", href: "/settings", icon: Settings, group: "System" },
   {
