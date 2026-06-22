@@ -82,6 +82,10 @@ import {
   type ClinicianContact,
 } from "@/lib/api";
 import { ContactsTab } from "@/components/dashboard/contacts-tab";
+import {
+  ReportExportMenu,
+  ExportLabsPdfButton,
+} from "@/components/dashboard/report-export-menu";
 import { ScoreRing } from "@/components/dashboard/score-ring";
 import type { AccountStatus } from "@/lib/types";
 import { cn, formatDate, formatDateTime, relativeTime } from "@/lib/utils";
@@ -381,6 +385,7 @@ export default function UserDetailPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              {clinicalAccess && <ReportExportMenu userId={user.id} />}
               <Button variant="outline" onClick={() => openAction("role")}>
                 <UserCog className="size-4" />
                 Change role
@@ -737,7 +742,13 @@ export default function UserDetailPage() {
               ) : labsError ? (
                 <EmptyState icon={FlaskConical} title="Failed to load lab results" className="mt-4" />
               ) : labs !== null ? (
-                <Card>
+                <div className="space-y-3">
+                  {labs.length > 0 && (
+                    <div className="flex justify-end">
+                      <ExportLabsPdfButton userId={user.id} />
+                    </div>
+                  )}
+                  <Card>
                   <CardContent className="p-0">
                     {labs.length === 0 ? (
                       <EmptyState icon={FlaskConical} title="No lab results" description="No lab results have been uploaded for this user." className="m-5" />
@@ -784,6 +795,7 @@ export default function UserDetailPage() {
                     )}
                   </CardContent>
                 </Card>
+                </div>
               ) : null}
             </TabsContent>
 
