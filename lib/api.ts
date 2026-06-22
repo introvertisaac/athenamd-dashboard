@@ -732,6 +732,15 @@ export interface BroadcastResponse {
   };
 }
 
+// ─── Reports (PDF generation) ────────────────────────────────────────────────
+
+export interface ReportResponse {
+  downloadUrl: string;
+  filename: string;
+  expiresAt: string;
+  sizeBytes: number;
+}
+
 // ─── Internal fetch helper ─────────────────────────────────────────────────
 
 let isRefreshing = false;
@@ -921,6 +930,28 @@ export const api = {
 
       getContacts(id: string): Promise<ContactsResponse> {
         return apiFetch<ContactsResponse>(`/api/v1/admin/users/${id}/contacts`);
+      },
+    },
+
+    reports: {
+      // Backend wraps the payload in { data }, and apiFetch does not unwrap it,
+      // so callers read `res.data`. A JSON body is sent (even when empty) so the
+      // Content-Type matches the backend's strict schema.
+      healthSummary(userId: string): Promise<{ data: ReportResponse }> {
+        return apiFetch<{ data: ReportResponse }>(
+          `/api/v1/admin/reports/user/${userId}/health-summary`,
+          { method: "POST", body: JSON.stringify({}) }
+        );
+      },
+
+      labResults(
+        userId: string,
+        params: { from?: string; to?: string } = {}
+      ): Promise<{ data: ReportResponse }> {
+        return apiFetch<{ data: ReportResponse }>(
+          `/api/v1/admin/reports/user/${userId}/lab-results`,
+          { method: "POST", body: JSON.stringify(params) }
+        );
       },
     },
 
